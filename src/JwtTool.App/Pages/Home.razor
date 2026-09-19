@@ -255,7 +255,9 @@ else
         }
     }
 
-    private string[] TokenParts => tokenInput.Trim().Split('.');
+    private string[] TokenParts => tokenParts;
+
+    private string[] tokenParts = [];
 
     private string? HeaderPart => decoded?.HeaderJson is null ? null : TokenParts.ElementAtOrDefault(0);
     private string? PayloadPart => decoded?.PayloadJson is null ? null : TokenParts.ElementAtOrDefault(1);
@@ -273,6 +275,7 @@ else
 
     private void TokenInputChanged()
     {
+        tokenParts = tokenInput.Trim().Split('.');
         decoded = tokenInput.Trim().Length == 0 ? null : TokenDecoder.Decode(tokenInput.Trim());
         Reverify();
     }
