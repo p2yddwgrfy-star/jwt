@@ -1,0 +1,106 @@
+@using JwtTool.TokenOperations
+@inject IJSRuntime JS
+
+<div class="encode-grid">
+    <label>
+        Header
+        <textarea rows="6" @bind="encHeader" @bind:event="oninput" @bind:after="Reencode"></textarea>
+    </label>
+    <label>
+        Payload
+        <textarea rows="6" @bind="encPayload" @bind:event="oninput" @bind:after="Reencode"></textarea>
+    </label>
+</div>
+
+<div class="verify-controls">
+    <label>
+        Algorithm
+        <select @bind="encAlgorithm" @bind:after="Reencode">
+            @foreach (var name in AlgorithmNames)
+            {
+                <option value="@name">@name</option>
+            }
+        </select>
+    </label>
+    <label class="key-label">
+        Key — @if (encAlgorithm == SignatureAlgorithm.RS256)
+        {
+            <text>PEM private key</text>
+        }
+        else
+        {
+            <text>the Secret as text</text>
+        }
+        <textarea rows="3" @bind="encKey" @bind:event="oninput" @bind:after="Reencode"
+                  placeholder="@(encAlgorithm == SignatureAlgorithm.RS256 ? RsaPlaceholder : "your-256-bit-secret")"></textarea>
+    </label>
+</div>
+
+<h2 class="section-title">Token</h2>
+@if (encError is not null)
+{
+    <div class="parse-error">@encError</div>
+}
+else if (encKey.Trim().Length == 0)
+{
+    <p class="hint">Pick a Key to see the signed Token. Nothing leaves your browser.</p>
+}
+else if (encToken is not null)
+{
+    var encParts = encToken.Split('.');
+    <pre class="json token-output" id="encoded-token"><span class="part header-part">@encParts.ElementAtOrDefault(0)</span>.<span class="part payload-part">@encParts.ElementAtOrDefault(1)</span>.<span class="part signature-part">@encParts.ElementAtOrDefault(2)</span></pre>
+    <button class="ghost" @onclick="CopyEncodedToken">Copy token</button>
+    @if (copyStatus is not null)
+    {
+        <span class="copy-status">@copyStatus</span>
+    }
+}
+
+@code {
+    private string encHeader = """{"alg":"HS256","typ":"JWT"}""";
+    private string encPayload = DefaultPayload();
+    private string encKey = "";
+    private SignatureAlgorithm encAlgorithm = SignatureAlgorithm.HS256;
+    private string? encToken;
+    private string? encError;
+    private string? copyStatus;
+
+    private static string[] AlgorithmNames => Enum.GetNames<SignatureAlgorithm>();
+
+    private const string RsaPlaceholder = "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----";
+
+    private static string DefaultPayload()
+    {
+        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        return $$"""{"sub":"1234567890","name":"John Doe","iat":{{now}},"exp":{{now + 3600}}}""";
+    }
+
+    /// Loads the given header and payload into the editors, as the Decode tab's
+    /// "Tweak & re-encode" does. Public so the parent can drive it.
+    public void Load(string headerJson, string payloadJson)
+    {
+        encHeader = headerJson;
+        encPayload = payloadJson;
+        Reencode();
+        StateHasChanged();
+    }
+
+    private void Reencode()
+    {
+        encToken = null;
+        encError = null;
+        if (encKey.Trim().Length == 0)
+            return;
+        try
+        {
+            encToken = TokenEncoder.Encode(encHeader, encPayload, encAlgorithm, encKey);
+        }
+        catch (ArgumentException ex)
+        {
+            encError = ex.Message;
+        }
+    }
+
+    private async Task CopyEncodedToken() =>
+        copyStatus = await Clipboard.CopyAsync(JS, encToken ?? "");
+}
