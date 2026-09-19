@@ -59,9 +59,18 @@ public static class TokenEncoder
         var data = Encoding.UTF8.GetBytes(signingInput);
         if (algorithm == SignatureAlgorithm.RS256)
         {
-            using var rsa = RSA.Create();
-            rsa.ImportFromPem(keyMaterial);
-            return rsa.SignData(data, System.Security.Cryptography.HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+            try
+            {
+                using var rsa = RSA.Create();
+                rsa.ImportFromPem(keyMaterial);
+                return rsa.SignData(data, System.Security.Cryptography.HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+            }
+            catch (Exception ex) when (ex is CryptographicException or ArgumentException)
+            {
+                throw new ArgumentException(
+                    "RS256 Encode needs the private key — a public key can only verify, not sign. " +
+                    "Paste the BEGIN PRIVATE KEY block.", ex);
+            }
         }
 
         var key = Encoding.UTF8.GetBytes(keyMaterial);
