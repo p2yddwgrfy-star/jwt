@@ -69,6 +69,10 @@
                         {
                             <button class="ghost" @onclick="EditAndReencode">Tweak &amp; re-encode</button>
                         }
+                        @if (copyStatus is not null)
+                        {
+                            <span class="copy-status">@copyStatus</span>
+                        }
                     </span>
                 </div>
 
@@ -216,6 +220,10 @@ else
         var encParts = encToken.Split('.');
         <pre class="json token-output" id="encoded-token"><span class="part header-part">@encParts.ElementAtOrDefault(0)</span>.<span class="part payload-part">@encParts.ElementAtOrDefault(1)</span>.<span class="part signature-part">@encParts.ElementAtOrDefault(2)</span></pre>
         <button class="ghost" @onclick="CopyEncodedToken">Copy token</button>
+        @if (copyStatus is not null)
+        {
+            <span class="copy-status">@copyStatus</span>
+        }
     }
 }
 
@@ -313,12 +321,29 @@ else
         Reencode();
     }
 
-    private async Task CopyDecodedJson() =>
-        await JS.InvokeVoidAsync("navigator.clipboard.writeText",
-            string.Join("\n\n", new[] { decoded?.HeaderJson, decoded?.PayloadJson }.Where(s => s is not null)));
+    private string? copyStatus;
+
+    private async Task CopyDecodedJson()
+    {
+        var json = string.Join("\n\n", new[] { decoded?.HeaderJson, decoded?.PayloadJson }.Where(s => s is not null));
+        await CopyToClipboard(json);
+    }
 
     private async Task CopyEncodedToken() =>
-        await JS.InvokeVoidAsync("navigator.clipboard.writeText", encToken ?? "");
+        await CopyToClipboard(encToken ?? "");
+
+    private async Task CopyToClipboard(string text)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", text);
+            copyStatus = "Copied.";
+        }
+        catch (JSException)
+        {
+            copyStatus = "Copy failed — your browser blocked clipboard access. Select the text manually.";
+        }
+    }
 
     private void ClearInput()
     {

@@ -338,6 +338,12 @@ pre.json {
     color: var(--muted);
 }
 
+.copy-status {
+    color: var(--muted);
+    font-size: 0.8rem;
+    margin-left: 0.4rem;
+}
+
 button, button.ghost {
     background: var(--panel);
     border: 1px solid var(--border);
