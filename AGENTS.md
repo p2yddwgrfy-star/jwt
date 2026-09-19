@@ -4,7 +4,7 @@
 
 ### Issue tracker
 
-Issues, specs, and tickets are tracked as GitHub issues in `p2yddwgrfy-star/jwt` (via the `gh` CLI). See `docs/agents/issue-tracker.md`.
+Issues, specs, and tickets are tracked as GitHub issues in `peterleing/jwt` (via the `gh` CLI). See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 
