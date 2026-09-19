@@ -28,6 +28,8 @@ public static class TokenVerifier
     public static VerifyResult Verify(string token, SignatureAlgorithm algorithm, string keyMaterial)
     {
         var parts = token.Split('.');
+        if (parts.Length == 4 && parts[3].Length == 0)
+            parts = parts[..3]; // tolerate a single trailing dot, matching Decode's paste-artifact leniency
         if (parts.Length != 3)
             return new VerifyResult(false, "A Token is three parts joined by dots; this input does not have three.");
 

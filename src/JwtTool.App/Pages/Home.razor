@@ -245,8 +245,15 @@ else
         ? "-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----"
         : "your-256-bit-secret";
 
-    private bool CanVerify =>
-        decoded is { IsUnparseable: false } && tokenInput.Trim().Split('.').Length == 3;
+    private bool CanVerify
+    {
+        get
+        {
+            if (decoded is null || decoded.IsUnparseable) return false;
+            var parts = TokenParts;
+            return parts.Length == 3 || (parts.Length == 4 && parts[3].Length == 0);
+        }
+    }
 
     private string[] TokenParts => tokenInput.Trim().Split('.');
 
