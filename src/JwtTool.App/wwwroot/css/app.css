@@ -50,6 +50,78 @@ html, body {
     letter-spacing: 0.02em;
 }
 
+.tabs {
+    display: flex;
+    gap: 0.4rem;
+    margin: 0.8rem 0 1.2rem;
+}
+
+.tab {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--muted);
+}
+
+.tab.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--bg);
+    font-weight: 600;
+}
+
+.encode-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: 1fr 1fr;
+    margin-bottom: 1rem;
+}
+
+@media (max-width: 55rem) {
+    .encode-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.encode-grid label, .encode-grid textarea {
+    color: var(--text);
+    font-family: Consolas, monospace;
+    font-size: 0.85rem;
+}
+
+.encode-grid label {
+    color: var(--muted);
+    display: flex;
+    flex-direction: column;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    gap: 0.3rem;
+}
+
+.encode-grid textarea {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.6rem;
+    width: 100%;
+}
+
+.encode-grid textarea:focus {
+    border-color: var(--accent);
+    outline: none;
+}
+
+.section-title {
+    color: var(--muted);
+    font-size: 0.85rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.token-output {
+    max-height: 12rem;
+    overflow-y: auto;
+}
+
 .token-input label {
     color: var(--muted);
     display: block;

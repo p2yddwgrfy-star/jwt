@@ -2,165 +2,243 @@
 @using JwtTool.TokenOperations
 @inject IJSRuntime JS
 
-<PageTitle>JWT Tool — Decode & Verify</PageTitle>
+<PageTitle>JWT Tool — Decode, Verify, Encode</PageTitle>
 
 <h1 class="app-title">JWT Tool</h1>
 
-<div class="token-input">
-    <label for="token-box">Paste a token to decode it</label>
-    <textarea id="token-box" rows="4" @bind="tokenInput" @bind:event="oninput" @bind:after="TokenInputChanged"
-              placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOi..."></textarea>
-    @if (tokenInput.Length > 0)
-    {
-        <button class="ghost" @onclick="ClearInput">Clear</button>
-    }
-</div>
+<nav class="tabs" role="tablist">
+    <button class="tab @(activeTab == Tab.Decode ? "active" : "")" role="tab"
+            aria-selected="@(activeTab == Tab.Decode)" @onclick='() => SwitchTab(Tab.Decode)'>Decode</button>
+    <button class="tab @(activeTab == Tab.Encode ? "active" : "")" role="tab"
+            aria-selected="@(activeTab == Tab.Encode)" @onclick='() => SwitchTab(Tab.Encode)'>Encode</button>
+</nav>
 
-@if (CanVerify)
+@if (activeTab == Tab.Decode)
 {
-    <div class="verify-section">
-        <h2>Verify</h2>
-        <div class="verify-controls">
-            <label>
-                Algorithm
-                <select @bind="verifyAlgorithm" @bind:after="Reverify">
-                    @foreach (var name in AlgorithmNames)
-                    {
-                        <option value="@name">@name</option>
-                    }
-                </select>
-            </label>
-            <label class="key-label">
-                Key — @if (verifyAlgorithm == SignatureAlgorithm.RS256)
+    <div class="token-input">
+        <label for="token-box">Paste a token to decode it</label>
+        <textarea id="token-box" rows="4" @bind="tokenInput" @bind:event="oninput" @bind:after="TokenInputChanged"
+                  placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOi..."></textarea>
+        @if (tokenInput.Length > 0)
+        {
+            <button class="ghost" @onclick="ClearInput">Clear</button>
+        }
+    </div>
+
+    @if (decoded is null)
+    {
+        <p class="hint">Decode needs no key: the token's parts are shown as-is. Keys are only required to Verify or Encode.</p>
+    }
+    else if (decoded.IsUnparseable)
+    {
+        <div class="parse-error">
+            <strong>Not a token.</strong> @decoded.ParseError
+        </div>
+    }
+    else
+    {
+        <div class="two-pane">
+            <section class="left-pane">
+                <h2>Encoded</h2>
+                <p>
+                    <span class="part header-part">@Parts.Header</span>.<span class="part payload-part">@Parts.Payload</span>.<span class="part signature-part">@Parts.Signature</span>
+                </p>
+
+                <h2>Warnings</h2>
+                @if (decoded.Warnings.Count == 0)
                 {
-                    <text>PEM key pair (public or private key)</text>
+                    <p class="hint">None — nothing unusual about this token.</p>
                 }
                 else
                 {
-                    <text>the Secret as text</text>
+                    <ul class="warnings">
+                        @foreach (var warning in decoded.Warnings)
+                        {
+                            <li>@warning</li>
+                        }
+                    </ul>
                 }
-                <textarea id="key-box" rows="3" @bind="keyInput" @bind:event="oninput" @bind:after="Reverify"
-                          placeholder="@KeyPlaceholder"></textarea>
-            </label>
+            </section>
+
+            <section class="right-pane">
+                <div class="pane-head">
+                    <h2>Decoded</h2>
+                    <span>
+                        <button class="ghost" @onclick="CopyDecodedJson">Copy JSON</button>
+                        @if (decoded.HeaderJson is not null && decoded.PayloadJson is not null)
+                        {
+                            <button class="ghost" @onclick="EditAndReencode">Tweak &amp; re-encode</button>
+                        }
+                    </span>
+                </div>
+
+                @if (decoded.HeaderJson is null)
+                {
+                    <p class="hint">Header could not be decoded — see Warnings.</p>
+                }
+                else
+                {
+                    <pre class="json header-part">@decoded.HeaderJson</pre>
+                }
+
+                @if (decoded.PayloadJson is null)
+                {
+                    <p class="hint">Payload could not be decoded — see Warnings.</p>
+                }
+                else
+                {
+                    <pre class="json payload-part">@decoded.PayloadJson</pre>
+                }
+
+                @if (decoded.TimeClaims.Count > 0)
+                {
+                    <table class="time-claims">
+                        @foreach (var claim in decoded.TimeClaims)
+                        {
+                            <tr>
+                                <td><code>@claim.Name</code></td>
+                                <td>@claim.Value.ToString("yyyy-MM-dd HH:mm:ss 'UTC'")</td>
+                                <td>
+                                    @if (claim.IsExpired)
+                                    {
+                                        <span class="badge expired">expired</span>
+                                    }
+                                    else if (claim.NotYetValid)
+                                    {
+                                        <span class="badge not-yet-valid">not yet valid</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </table>
+                }
+
+                @if (decoded.SignatureBase64Url is not null)
+                {
+                    <p class="signature-row">
+                        Signature: <code class="part signature-part">@decoded.SignatureBase64Url</code>
+                    </p>
+                }
+            </section>
         </div>
 
-        @if (keyInput.Trim().Length == 0)
-        {
-            <p class="hint">Paste a Key to verify the Signature. It never leaves your browser.</p>
-        }
-        else if (verdict is not null)
-        {
-            <div class="verdict @(!verdict.IsValid ? "invalid" : "valid")">
-                <strong>@(verdict.IsValid ? "Valid signature." : "Invalid signature.")</strong>
-                @if (!verdict.IsValid)
-                {
-                    <span>@verdict.Reason</span>
-                }
+        <div class="verify-section">
+            <h2>Verify</h2>
+            <div class="verify-controls">
+                <label>
+                    Algorithm
+                    <select @bind="verifyAlgorithm" @bind:after="Reverify">
+                        @foreach (var name in AlgorithmNames)
+                        {
+                            <option value="@name">@name</option>
+                        }
+                    </select>
+                </label>
+                <label class="key-label">
+                    Key — @if (verifyAlgorithm == SignatureAlgorithm.RS256)
+                    {
+                        <text>PEM key pair (public or private key)</text>
+                    }
+                    else
+                    {
+                        <text>the Secret as text</text>
+                    }
+                    <textarea id="key-box" rows="3" @bind="keyInput" @bind:event="oninput" @bind:after="Reverify"
+                              placeholder="@KeyPlaceholder"></textarea>
+                </label>
             </div>
-        }
-    </div>
-}
 
-@if (decoded is null)
-{
-    <p class="hint">Decode needs no key: the token's parts are shown as-is. Keys are only required to Verify or Encode.</p>
-}
-else if (decoded.IsUnparseable)
-{
-    <div class="parse-error">
-        <strong>Not a token.</strong> @decoded.ParseError
-    </div>
+            @if (keyInput.Trim().Length == 0)
+            {
+                <p class="hint">Paste a Key to verify the Signature. It never leaves your browser.</p>
+            }
+            else if (verdict is not null)
+            {
+                <div class="verdict @(!verdict.IsValid ? "invalid" : "valid")">
+                    <strong>@(verdict.IsValid ? "Valid signature." : "Invalid signature.")</strong>
+                    @if (!verdict.IsValid)
+                    {
+                        <span>@verdict.Reason</span>
+                    }
+                </div>
+            }
+        </div>
+    }
 }
 else
 {
-    <div class="two-pane">
-        <section class="left-pane">
-            <h2>Encoded</h2>
-            <p>
-                <span class="part header-part">@Parts.Header</span>.<span class="part payload-part">@Parts.Payload</span>.<span class="part signature-part">@Parts.Signature</span>
-            </p>
-
-            <h2>Warnings</h2>
-            @if (decoded.Warnings.Count == 0)
-            {
-                <p class="hint">None — nothing unusual about this token.</p>
-            }
-            else
-            {
-                <ul class="warnings">
-                    @foreach (var warning in decoded.Warnings)
-                    {
-                        <li>@warning</li>
-                    }
-                </ul>
-            }
-        </section>
-
-        <section class="right-pane">
-            <div class="pane-head">
-                <h2>Decoded</h2>
-                <button class="ghost" @onclick="CopyDecodedJson">Copy JSON</button>
-            </div>
-
-            @if (decoded.HeaderJson is null)
-            {
-                <p class="hint">Header could not be decoded — see Warnings.</p>
-            }
-            else
-            {
-                <pre class="json header-part">@decoded.HeaderJson</pre>
-            }
-
-            @if (decoded.PayloadJson is null)
-            {
-                <p class="hint">Payload could not be decoded — see Warnings.</p>
-            }
-            else
-            {
-                <pre class="json payload-part">@decoded.PayloadJson</pre>
-            }
-
-            @if (decoded.TimeClaims.Count > 0)
-            {
-                <table class="time-claims">
-                    @foreach (var claim in decoded.TimeClaims)
-                    {
-                        <tr>
-                            <td><code>@claim.Name</code></td>
-                            <td>@claim.Value.ToString("yyyy-MM-dd HH:mm:ss 'UTC'")</td>
-                            <td>
-                                @if (claim.IsExpired)
-                                {
-                                    <span class="badge expired">expired</span>
-                                }
-                                else if (claim.NotYetValid)
-                                {
-                                    <span class="badge not-yet-valid">not yet valid</span>
-                                }
-                            </td>
-                        </tr>
-                    }
-                </table>
-            }
-
-            @if (decoded.SignatureBase64Url is not null)
-            {
-                <p class="signature-row">
-                    Signature: <code class="part signature-part">@decoded.SignatureBase64Url</code>
-                </p>
-            }
-        </section>
+    <div class="encode-grid">
+        <label>
+            Header
+            <textarea rows="6" @bind="encHeader" @bind:event="oninput" @bind:after="Reencode"></textarea>
+        </label>
+        <label>
+            Payload
+            <textarea rows="6" @bind="encPayload" @bind:event="oninput" @bind:after="Reencode"></textarea>
+        </label>
     </div>
+
+    <div class="verify-controls">
+        <label>
+            Algorithm
+            <select @bind="encAlgorithm" @bind:after="Reencode">
+                @foreach (var name in AlgorithmNames)
+                {
+                    <option value="@name">@name</option>
+                }
+            </select>
+        </label>
+        <label class="key-label">
+            Key — @if (encAlgorithm == SignatureAlgorithm.RS256)
+            {
+                <text>PEM private key</text>
+            }
+            else
+            {
+                <text>the Secret as text</text>
+            }
+            <textarea rows="3" @bind="encKey" @bind:event="oninput" @bind:after="Reencode"
+                      placeholder="@(encAlgorithm == SignatureAlgorithm.RS256 ? RsaPlaceholder : "your-256-bit-secret")"></textarea>
+        </label>
+    </div>
+
+    <h2 class="section-title">Token</h2>
+    @if (encError is not null)
+    {
+        <div class="parse-error">@encError</div>
+    }
+    else if (encKey.Trim().Length == 0)
+    {
+        <p class="hint">Pick a Key to see the signed Token. Nothing leaves your browser.</p>
+    }
+    else if (encToken is not null)
+    {
+        <pre class="json token-output" id="encoded-token">@encToken</pre>
+        <button class="ghost" @onclick="CopyEncodedToken">Copy token</button>
+    }
 }
 
 @code {
+    private enum Tab { Decode, Encode }
+
+    private Tab activeTab = Tab.Decode;
+
     private string tokenInput = "";
     private string keyInput = "";
     private DecodeResult? decoded;
     private VerifyResult? verdict;
     private SignatureAlgorithm verifyAlgorithm = SignatureAlgorithm.HS256;
 
+    private string encHeader = """{"alg":"HS256","typ":"JWT"}""";
+    private string encPayload = DefaultPayload();
+    private string encKey = "";
+    private SignatureAlgorithm encAlgorithm = SignatureAlgorithm.HS256;
+    private string? encToken;
+    private string? encError;
+
     private static string[] AlgorithmNames => Enum.GetNames<SignatureAlgorithm>();
+
+    private const string RsaPlaceholder = "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----";
 
     private string KeyPlaceholder => verifyAlgorithm == SignatureAlgorithm.RS256
         ? "-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----"
@@ -177,6 +255,14 @@ else
     private (string Header, string Payload, string Signature) Parts =>
         (HeaderPart ?? "", PayloadPart ?? "", TokenParts.ElementAtOrDefault(2) ?? "");
 
+    private static string DefaultPayload()
+    {
+        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        return $$"""{"sub":"1234567890","name":"John Doe","iat":{{now}},"exp":{{now + 3600}}}""";
+    }
+
+    private void SwitchTab(Tab tab) => activeTab = tab;
+
     private void TokenInputChanged()
     {
         decoded = tokenInput.Trim().Length == 0 ? null : TokenDecoder.Decode(tokenInput.Trim());
@@ -190,9 +276,38 @@ else
             : null;
     }
 
+    private void Reencode()
+    {
+        encToken = null;
+        encError = null;
+        if (encKey.Trim().Length == 0)
+            return;
+        try
+        {
+            encToken = TokenEncoder.Encode(encHeader, encPayload, encAlgorithm, encKey);
+        }
+        catch (ArgumentException ex)
+        {
+            encError = ex.Message;
+        }
+    }
+
+    private void EditAndReencode()
+    {
+        if (decoded?.HeaderJson is null || decoded.PayloadJson is null)
+            return;
+        encHeader = decoded.HeaderJson;
+        encPayload = decoded.PayloadJson;
+        SwitchTab(Tab.Encode);
+        Reencode();
+    }
+
     private async Task CopyDecodedJson() =>
         await JS.InvokeVoidAsync("navigator.clipboard.writeText",
             string.Join("\n\n", new[] { decoded?.HeaderJson, decoded?.PayloadJson }.Where(s => s is not null)));
+
+    private async Task CopyEncodedToken() =>
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", encToken ?? "");
 
     private void ClearInput()
     {
