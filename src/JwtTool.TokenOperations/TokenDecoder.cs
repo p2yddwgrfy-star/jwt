@@ -43,20 +43,20 @@ public static class TokenDecoder
             };
         }
 
-        var (headerJson, headerWarnings) = DecodePart(parts[0], "Header");
-        var (payloadJson, payloadWarnings) = DecodePart(parts[1], "Payload");
+        var (headerJson, header, headerWarnings) = DecodePart(parts[0], "Header");
+        var (payloadJson, payload, payloadWarnings) = DecodePart(parts[1], "Payload");
         var signatureWarning = parts[2].Length == 0 ? ["The Signature part is empty."] : Array.Empty<string>();
         var warnings = headerWarnings.Concat(payloadWarnings).Concat(signatureWarning).ToList();
 
         string? algorithm = null;
-        if (headerJson is not null && JsonNode.Parse(headerJson) is JsonObject header)
+        if (header is not null)
         {
             algorithm = header["alg"]?.GetValue<string>();
             if (algorithm == "none")
                 warnings.Add("This Token is unsigned (alg: none) — anyone can forge its contents.");
         }
 
-        var timeClaims = payloadJson is not null && JsonNode.Parse(payloadJson) is JsonObject payload
+        var timeClaims = payload is not null
             ? CollectTimeClaims(payload, warnings)
             : [];
 
@@ -66,12 +66,12 @@ public static class TokenDecoder
         return new DecodeResult(headerJson, payloadJson, parts[2], algorithm, timeClaims, warnings, null);
     }
 
-    private static (string? Json, IEnumerable<string> Warnings) DecodePart(string part, string name)
+    private static (string? Json, JsonObject? Obj, IEnumerable<string> Warnings) DecodePart(string part, string name)
     {
         var (obj, problem) = TokenPartReader.ReadJsonObject(part, name);
         return problem is not null
-            ? (null, [problem])
-            : (JsonSerializer.Serialize(obj, JsonOptions), []);
+            ? (null, null, [problem])
+            : (JsonSerializer.Serialize(obj, JsonOptions), obj, []);
     }
 
     private static List<TimeClaim> CollectTimeClaims(JsonObject payload, List<string> warnings)
