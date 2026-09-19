@@ -16,7 +16,8 @@ public sealed record DecodeResult(
     IReadOnlyList<string> Warnings,
     string? ParseError)
 {
-    public static readonly DecodeResult Unparseable = new(null, null, null, null, [], [], null);
+    public static readonly DecodeResult Unparseable =
+        new(null, null, null, null, [], [], "Input could not be parsed as a Token.");
     public bool IsUnparseable => ParseError is not null;
 }
 
