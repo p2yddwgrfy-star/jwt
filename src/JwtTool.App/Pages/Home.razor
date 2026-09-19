@@ -213,7 +213,8 @@ else
     }
     else if (encToken is not null)
     {
-        <pre class="json token-output" id="encoded-token">@encToken</pre>
+        var encParts = encToken.Split('.');
+        <pre class="json token-output" id="encoded-token"><span class="part header-part">@encParts.ElementAtOrDefault(0)</span>.<span class="part payload-part">@encParts.ElementAtOrDefault(1)</span>.<span class="part signature-part">@encParts.ElementAtOrDefault(2)</span></pre>
         <button class="ghost" @onclick="CopyEncodedToken">Copy token</button>
     }
 }
