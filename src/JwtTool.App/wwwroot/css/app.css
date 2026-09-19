@@ -1,0 +1,203 @@
+:root {
+    color-scheme: dark;
+    --bg: #14161a;
+    --panel: #1d2026;
+    --border: #2c313a;
+    --text: #e8eaed;
+    --muted: #9aa0a8;
+    --header-color: #6fb3ff;
+    --payload-color: #f28b82;
+    --signature-color: #81c995;
+    --warn: #fdd663;
+    --error: #f28b82;
+    --accent: #8ab4f8;
+}
+
+html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+#blazor-error-ui {
+    background: lightyellow;
+    bottom: 0;
+    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
+    display: none;
+    left: 0;
+    padding: 0.6rem 1rem;
+    position: fixed;
+    right: 0;
+    z-index: 1000;
+}
+
+#blazor-error-ui .dismiss {
+    cursor: pointer;
+    position: absolute;
+    right: 0.75rem;
+    top: 0.5rem;
+}
+
+.tool-page {
+    max-width: 72rem;
+    margin: 0 auto;
+    padding: 1.5rem;
+}
+
+.app-title {
+    color: var(--accent);
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.token-input label {
+    color: var(--muted);
+    display: block;
+    font-size: 0.9rem;
+    margin-bottom: 0.35rem;
+}
+
+.token-input textarea {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: Consolas, monospace;
+    font-size: 0.9rem;
+    padding: 0.6rem;
+    width: 100%;
+}
+
+.token-input textarea:focus {
+    border-color: var(--accent);
+    outline: none;
+}
+
+.hint {
+    color: var(--muted);
+}
+
+.two-pane {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: 1fr 1.2fr;
+    margin-top: 1rem;
+}
+
+@media (max-width: 55rem) {
+    .two-pane {
+        grid-template-columns: 1fr;
+    }
+}
+
+.left-pane h2, .right-pane h2 {
+    color: var(--muted);
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin: 1rem 0 0.4rem;
+}
+
+.pane-head {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+}
+
+.part {
+    border-radius: 3px;
+    font-family: Consolas, monospace;
+    padding: 0 2px;
+    word-break: break-all;
+}
+
+.header-part {
+    background: rgba(111, 179, 255, 0.12);
+    color: var(--header-color);
+}
+
+.payload-part {
+    background: rgba(242, 139, 130, 0.12);
+    color: var(--payload-color);
+}
+
+.signature-part {
+    background: rgba(129, 201, 149, 0.12);
+    color: var(--signature-color);
+}
+
+pre.json {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-family: Consolas, monospace;
+    font-size: 0.85rem;
+    padding: 0.7rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.warnings {
+    list-style: none;
+    padding: 0;
+}
+
+.warnings li {
+    background: rgba(253, 214, 99, 0.08);
+    border-left: 3px solid var(--warn);
+    color: var(--warn);
+    margin-bottom: 0.4rem;
+    padding: 0.45rem 0.7rem;
+}
+
+.parse-error {
+    background: rgba(242, 139, 130, 0.08);
+    border-left: 3px solid var(--error);
+    color: var(--error);
+    margin-top: 1rem;
+    padding: 0.6rem 0.9rem;
+}
+
+.time-claims {
+    border-collapse: collapse;
+    margin-top: 0.6rem;
+    width: 100%;
+}
+
+.time-claims td {
+    border-bottom: 1px solid var(--border);
+    padding: 0.35rem 0.5rem;
+}
+
+.badge {
+    border-radius: 999px;
+    font-size: 0.72rem;
+    padding: 0.15rem 0.6rem;
+}
+
+.badge.expired {
+    background: rgba(242, 139, 130, 0.18);
+    color: var(--payload-color);
+}
+
+.badge.not-yet-valid {
+    background: rgba(253, 214, 99, 0.18);
+    color: var(--warn);
+}
+
+.signature-row code {
+    font-size: 0.8rem;
+}
+
+button, button.ghost {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    cursor: pointer;
+    padding: 0.35rem 0.8rem;
+}
+
+button:hover {
+    border-color: var(--accent);
+}
