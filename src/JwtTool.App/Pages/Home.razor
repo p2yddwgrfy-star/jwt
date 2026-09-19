@@ -2,19 +2,64 @@
 @using JwtTool.TokenOperations
 @inject IJSRuntime JS
 
-<PageTitle>JWT Tool — Decode</PageTitle>
+<PageTitle>JWT Tool — Decode & Verify</PageTitle>
 
 <h1 class="app-title">JWT Tool</h1>
 
 <div class="token-input">
     <label for="token-box">Paste a token to decode it</label>
-    <textarea id="token-box" rows="4" @bind="tokenInput" @bind:event="oninput" @bind:after="Decode"
+    <textarea id="token-box" rows="4" @bind="tokenInput" @bind:event="oninput" @bind:after="TokenInputChanged"
               placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOi..."></textarea>
     @if (tokenInput.Length > 0)
     {
         <button class="ghost" @onclick="ClearInput">Clear</button>
     }
 </div>
+
+@if (CanVerify)
+{
+    <div class="verify-section">
+        <h2>Verify</h2>
+        <div class="verify-controls">
+            <label>
+                Algorithm
+                <select @bind="verifyAlgorithm" @bind:after="Reverify">
+                    @foreach (var name in AlgorithmNames)
+                    {
+                        <option value="@name">@name</option>
+                    }
+                </select>
+            </label>
+            <label class="key-label">
+                Key — @if (verifyAlgorithm == SignatureAlgorithm.RS256)
+                {
+                    <text>PEM key pair (public or private key)</text>
+                }
+                else
+                {
+                    <text>the Secret as text</text>
+                }
+                <textarea id="key-box" rows="3" @bind="keyInput" @bind:event="oninput" @bind:after="Reverify"
+                          placeholder="@KeyPlaceholder"></textarea>
+            </label>
+        </div>
+
+        @if (keyInput.Trim().Length == 0)
+        {
+            <p class="hint">Paste a Key to verify the Signature. It never leaves your browser.</p>
+        }
+        else if (verdict is not null)
+        {
+            <div class="verdict @(!verdict.IsValid ? "invalid" : "valid")">
+                <strong>@(verdict.IsValid ? "Valid signature." : "Invalid signature.")</strong>
+                @if (!verdict.IsValid)
+                {
+                    <span>@verdict.Reason</span>
+                }
+            </div>
+        }
+    </div>
+}
 
 @if (decoded is null)
 {
@@ -110,7 +155,19 @@ else
 
 @code {
     private string tokenInput = "";
+    private string keyInput = "";
     private DecodeResult? decoded;
+    private VerifyResult? verdict;
+    private SignatureAlgorithm verifyAlgorithm = SignatureAlgorithm.HS256;
+
+    private static string[] AlgorithmNames => Enum.GetNames<SignatureAlgorithm>();
+
+    private string KeyPlaceholder => verifyAlgorithm == SignatureAlgorithm.RS256
+        ? "-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----"
+        : "your-256-bit-secret";
+
+    private bool CanVerify =>
+        decoded is { IsUnparseable: false } && tokenInput.Trim().Split('.').Length == 3;
 
     private string[] TokenParts => tokenInput.Trim().Split('.');
 
@@ -120,7 +177,18 @@ else
     private (string Header, string Payload, string Signature) Parts =>
         (HeaderPart ?? "", PayloadPart ?? "", TokenParts.ElementAtOrDefault(2) ?? "");
 
-    private void Decode() => decoded = tokenInput.Trim().Length == 0 ? null : TokenDecoder.Decode(tokenInput.Trim());
+    private void TokenInputChanged()
+    {
+        decoded = tokenInput.Trim().Length == 0 ? null : TokenDecoder.Decode(tokenInput.Trim());
+        Reverify();
+    }
+
+    private void Reverify()
+    {
+        verdict = CanVerify && keyInput.Trim().Length > 0
+            ? TokenVerifier.Verify(tokenInput.Trim(), verifyAlgorithm, keyInput.Trim())
+            : null;
+    }
 
     private async Task CopyDecodedJson() =>
         await JS.InvokeVoidAsync("navigator.clipboard.writeText",
@@ -129,6 +197,8 @@ else
     private void ClearInput()
     {
         tokenInput = "";
+        keyInput = "";
         decoded = null;
+        verdict = null;
     }
 }

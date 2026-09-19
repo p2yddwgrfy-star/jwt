@@ -68,30 +68,10 @@ public static class TokenDecoder
 
     private static (string? Json, IEnumerable<string> Warnings) DecodePart(string part, string name)
     {
-        if (part.Length == 0)
-            return (null, [$"The {name} part is empty."]);
-
-        string json;
-        try
-        {
-            json = Base64Url.DecodeToString(part);
-        }
-        catch (FormatException)
-        {
-            return (null, [$"The {name} part is not valid base64url."]);
-        }
-
-        try
-        {
-            if (JsonNode.Parse(json) is not JsonObject)
-                return (null, [$"The {name} part does not contain a JSON object."]);
-        }
-        catch (JsonException)
-        {
-            return (null, [$"The {name} part does not contain a JSON object."]);
-        }
-
-        return (JsonSerializer.Serialize(JsonNode.Parse(json), JsonOptions), []);
+        var (obj, problem) = TokenPartReader.ReadJsonObject(part, name);
+        return problem is not null
+            ? (null, [problem])
+            : (JsonSerializer.Serialize(obj, JsonOptions), []);
     }
 
     private static List<TimeClaim> CollectTimeClaims(JsonObject payload, List<string> warnings)

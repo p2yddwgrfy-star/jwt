@@ -188,6 +188,83 @@ pre.json {
 .signature-row code {
     font-size: 0.8rem;
 }
+.verify-section h2 {
+    color: var(--muted);
+    font-size: 0.85rem;
+    letter-spacing: 0.08em;
+    margin: 1.4rem 0 0.4rem;
+    text-transform: uppercase;
+}
+
+.verify-controls {
+    display: flex;
+    gap: 1rem;
+}
+
+@media (max-width: 55rem) {
+    .verify-controls {
+        flex-direction: column;
+    }
+}
+
+.verify-controls label {
+    color: var(--muted);
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    font-size: 0.85rem;
+    gap: 0.3rem;
+}
+
+.key-label {
+    flex: 3 !important;
+}
+
+.verify-controls select {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    padding: 0.4rem;
+    width: 9rem;
+}
+
+.key-label textarea {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: Consolas, monospace;
+    font-size: 0.8rem;
+    padding: 0.5rem;
+    width: 100%;
+}
+
+.key-label textarea:focus,
+.verify-controls select:focus {
+    border-color: var(--accent);
+    outline: none;
+}
+
+.verdict {
+    border-left: 3px solid;
+    margin-top: 0.7rem;
+    padding: 0.6rem 0.9rem;
+}
+
+.verdict.valid {
+    border-color: var(--signature-color);
+    color: var(--signature-color);
+}
+
+.verdict.invalid {
+    border-color: var(--error);
+    color: var(--error);
+}
+
+.verdict.invalid span {
+    color: var(--muted);
+}
 
 button, button.ghost {
     background: var(--panel);
