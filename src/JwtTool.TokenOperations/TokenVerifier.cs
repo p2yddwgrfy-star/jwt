@@ -48,7 +48,15 @@ public static class TokenVerifier
             return new VerifyResult(false, "A Key is required to Verify: paste the Secret (HS family) or PEM key pair (RS256).");
 
         var signingInput = $"{parts[0]}.{parts[1]}";
-        var expected = Base64Url.DecodeToBytes(parts[2]);
+        byte[] expected;
+        try
+        {
+            expected = Base64Url.DecodeToBytes(parts[2]);
+        }
+        catch (FormatException)
+        {
+            return new VerifyResult(false, "The Signature part is not valid base64url, so it cannot be a real signature.");
+        }
         try
         {
             var valid = algorithm == SignatureAlgorithm.RS256

@@ -46,7 +46,7 @@ public static class TokenDecoder
 
         var (headerJson, header, headerWarnings) = DecodePart(parts[0], "Header");
         var (payloadJson, payload, payloadWarnings) = DecodePart(parts[1], "Payload");
-        var signatureWarning = parts[2].Length == 0 ? ["The Signature part is empty."] : Array.Empty<string>();
+        var signatureWarning = SignatureWarnings(parts[2]);
         var warnings = headerWarnings.Concat(payloadWarnings).Concat(signatureWarning).ToList();
 
         string? algorithm = null;
@@ -73,6 +73,27 @@ public static class TokenDecoder
         return problem is not null
             ? (null, null, [problem])
             : (JsonSerializer.Serialize(obj, JsonOptions), obj, []);
+    }
+
+    private static IEnumerable<string> SignatureWarnings(string part)
+    {
+        if (part.Length == 0)
+            yield return "The Signature part is empty.";
+        else if (!IsValidBase64Url(part))
+            yield return "The Signature part is not valid base64url.";
+    }
+
+    private static bool IsValidBase64Url(string part)
+    {
+        try
+        {
+            Base64Url.DecodeToBytes(part);
+            return true;
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
     }
 
     private static List<TimeClaim> CollectTimeClaims(JsonObject payload, List<string> warnings)
