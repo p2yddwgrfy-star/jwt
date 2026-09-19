@@ -4,11 +4,11 @@
 <div class="encode-grid">
     <label>
         Header
-        <textarea rows="6" @bind="encHeader" @bind:event="oninput" @bind:after="Reencode"></textarea>
+        <textarea id="enc-header" rows="6" @bind="encHeader" @bind:event="oninput" @bind:after="Reencode"></textarea>
     </label>
     <label>
         Payload
-        <textarea rows="6" @bind="encPayload" @bind:event="oninput" @bind:after="Reencode"></textarea>
+        <textarea id="enc-payload" rows="6" @bind="encPayload" @bind:event="oninput" @bind:after="Reencode"></textarea>
     </label>
 </div>
 
@@ -31,7 +31,7 @@
         {
             <text>the Secret as text</text>
         }
-        <textarea rows="3" @bind="encKey" @bind:event="oninput" @bind:after="Reencode"
+        <textarea id="enc-key" rows="3" @bind="encKey" @bind:event="oninput" @bind:after="Reencode"
                   placeholder="@(encAlgorithm == SignatureAlgorithm.RS256 ? RsaPlaceholder : "your-256-bit-secret")"></textarea>
     </label>
 </div>

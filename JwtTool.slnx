@@ -2,4 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/JwtTool.App/JwtTool.App.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/JwtTool.App.E2E/JwtTool.App.E2E.csproj" />
+  </Folder>
 </Solution>

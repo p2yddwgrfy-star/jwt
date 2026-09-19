@@ -53,21 +53,23 @@ Make sure the server sends `.wasm` files as `application/wasm` (dotnet-serve doe
 ```bash
 dotnet build JwtTool.slnx
 dotnet test tests/JwtTool.TokenOperations.Tests
+dotnet test tests/JwtTool.App.E2E   # first run: pwsh tests/JwtTool.App.E2E/bin/Debug/net10.0/playwright.ps1 install chromium
 ```
 
-The solution has three projects:
+The solution has four projects:
 
 | Project | Purpose |
 |---|---|
 | `src/JwtTool.App` | Blazor WebAssembly UI (thin binding over the library) |
 | `src/JwtTool.TokenOperations` | The Token Operations seam: Decode, Verify, Encode |
-| `tests/JwtTool.TokenOperations.Tests` | xUnit tests at the Token Operations seam |
+| `tests/JwtTool.TokenOperations.Tests` | xUnit unit tests at the Token Operations seam |
+| `tests/JwtTool.App.E2E` | Playwright end-to-end tests: spawn the real app and drive it in Chromium |
 
-The UI is deliberately untested; all JWT logic is covered at the library seam (round-trip, warning catalog, strict-verify tests).
+JWT logic is covered at the library seam (round-trip, warning catalog, strict-verify tests); the E2E suite covers the UI flows themselves — decode, verify, encode, tab-switch state, and the tweak-and-re-encode path — in the Pages-shaped `/jwt/` layout.
 
 ### Deployment
 
-`push` to `main` runs [.github/workflows/deploy-pages.yml](.github/workflows/deploy-pages.yml): tests, publishes the static site, and deploys to GitHub Pages at the `/jwt/` subpath. No manual steps.
+`push` to `main` runs [.github/workflows/deploy-pages.yml](.github/workflows/deploy-pages.yml): unit tests, publishes the static site, and deploys to GitHub Pages at the `/jwt/` subpath — and [.github/workflows/e2e.yml](.github/workflows/e2e.yml) runs the browser end-to-end suite. No manual steps.
 
 Known limitation: GitHub Pages does not let you set HTTP response headers, so a strict Content-Security-Policy cannot be enforced there. The app's design already minimizes what a CSP would guard (no backend, no data leaves the browser — see ADR-0001). A self-hosted deployment can add a strict CSP.
 
