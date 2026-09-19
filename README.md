@@ -69,6 +69,8 @@ The UI is deliberately untested; all JWT logic is covered at the library seam (r
 
 `push` to `main` runs [.github/workflows/deploy-pages.yml](.github/workflows/deploy-pages.yml): tests, publishes the static site, and deploys to GitHub Pages at the `/jwt/` subpath. No manual steps.
 
+Known limitation: GitHub Pages does not let you set HTTP response headers, so a strict Content-Security-Policy cannot be enforced there. The app's design already minimizes what a CSP would guard (no backend, no data leaves the browser — see ADR-0001). A self-hosted deployment can add a strict CSP.
+
 ### Project docs
 
 - [CONTEXT.md](CONTEXT.md) — the project glossary (Decode, Verify, Encode, Key, Token, Signature, Claim, Warning)
