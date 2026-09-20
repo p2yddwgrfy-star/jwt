@@ -88,7 +88,7 @@ public static class TokenEncoder
         }
 
         var key = Encoding.UTF8.GetBytes(keyMaterial);
-        HMAC hmac = algorithm switch
+        using HMAC hmac = algorithm switch
         {
             SignatureAlgorithm.HS256 => new HMACSHA256(key),
             SignatureAlgorithm.HS384 => new HMACSHA384(key),

@@ -95,7 +95,7 @@ public static class TokenVerifier
     {
         var key = Encoding.UTF8.GetBytes(keyMaterial);
         var data = Encoding.UTF8.GetBytes(signingInput);
-        HMAC hmac = algorithm switch
+        using HMAC hmac = algorithm switch
         {
             SignatureAlgorithm.HS256 => new HMACSHA256(key),
             SignatureAlgorithm.HS384 => new HMACSHA384(key),
