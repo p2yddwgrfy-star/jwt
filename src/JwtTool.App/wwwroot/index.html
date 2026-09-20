@@ -28,6 +28,12 @@
         <a href="." class="reload">Reload</a>
         <span class="dismiss">🗙</span>
     </div>
+    <!-- rsa.js is loaded without subresource integrity (SRI) on purpose: GitHub Pages
+         serves no custom headers, but the real cost is that this file is rebuilt with a
+         new fingerprint on every app change, so any hash here would go stale and break
+         the app on the next deploy. The file ships from the same origin and the same
+         deploy as the rest of the app, which is the trust boundary that matters here;
+         a self-hosted deployment with a build-time hashing step can add SRI. -->
     <script src="js/rsa.js"></script>
     <script src="_framework/blazor.webassembly#[.{fingerprint}].js"></script>
 </body>

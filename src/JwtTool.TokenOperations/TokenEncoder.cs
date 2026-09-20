@@ -88,13 +88,14 @@ public static class TokenEncoder
         }
 
         var key = Encoding.UTF8.GetBytes(keyMaterial);
-        return algorithm switch
+        HMAC hmac = algorithm switch
         {
-            SignatureAlgorithm.HS256 => new HMACSHA256(key).ComputeHash(data),
-            SignatureAlgorithm.HS384 => new HMACSHA384(key).ComputeHash(data),
-            SignatureAlgorithm.HS512 => new HMACSHA512(key).ComputeHash(data),
+            SignatureAlgorithm.HS256 => new HMACSHA256(key),
+            SignatureAlgorithm.HS384 => new HMACSHA384(key),
+            SignatureAlgorithm.HS512 => new HMACSHA512(key),
             _ => throw new ArgumentOutOfRangeException(nameof(algorithm)),
         };
+        return hmac.ComputeHash(data);
     }
 
     private static class BclRsaSignatureSigner

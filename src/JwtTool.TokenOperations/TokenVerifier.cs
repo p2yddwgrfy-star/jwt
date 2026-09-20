@@ -95,13 +95,14 @@ public static class TokenVerifier
     {
         var key = Encoding.UTF8.GetBytes(keyMaterial);
         var data = Encoding.UTF8.GetBytes(signingInput);
-        var computed = algorithm switch
+        HMAC hmac = algorithm switch
         {
-            SignatureAlgorithm.HS256 => new HMACSHA256(key).ComputeHash(data),
-            SignatureAlgorithm.HS384 => new HMACSHA384(key).ComputeHash(data),
-            SignatureAlgorithm.HS512 => new HMACSHA512(key).ComputeHash(data),
+            SignatureAlgorithm.HS256 => new HMACSHA256(key),
+            SignatureAlgorithm.HS384 => new HMACSHA384(key),
+            SignatureAlgorithm.HS512 => new HMACSHA512(key),
             _ => throw new ArgumentOutOfRangeException(nameof(algorithm)),
         };
+        var computed = hmac.ComputeHash(data);
         return CryptographicOperations.FixedTimeEquals(expected, computed);
     }
 
