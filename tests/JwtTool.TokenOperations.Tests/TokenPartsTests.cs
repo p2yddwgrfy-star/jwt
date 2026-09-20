@@ -38,4 +38,22 @@ public class TokenPartsTests
     {
         Assert.Null(TokenParts.Of("h.p.s.."));
     }
+
+    [Fact]
+    public void Of_trims_surrounding_whitespace()
+    {
+        // Paste artifacts carry leading/trailing spaces and newlines.
+        var parts = TokenParts.Of("  h.p.s\r\n");
+
+        Assert.Equal(["h", "p", "s"], parts);
+    }
+
+    [Fact]
+    public void Of_leaves_inner_whitespace_in_place()
+    {
+        // Only the input's edges are trimmed; the parts themselves are untouched.
+        var parts = TokenParts.Of("h . p . s");
+
+        Assert.Equal(["h ", " p ", " s"], parts);
+    }
 }

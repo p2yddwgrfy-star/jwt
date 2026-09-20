@@ -210,18 +210,28 @@
 
     private void SwitchTab(Tab tab) => activeTab = tab;
 
-    private void TokenInputChanged()
+    private async Task TokenInputChanged()
     {
         tokenParts = TokenParts.Of(tokenInput);
         decoded = tokenInput.Trim().Length == 0 ? null : TokenDecoder.Decode(tokenInput.Trim());
-        Reverify();
+        await Reverify();
     }
 
-    private void Reverify()
+    private int verifySequence;
+
+    private async Task Reverify()
     {
-        verdict = CanVerify && keyInput.Trim().Length > 0
-            ? TokenVerifier.Verify(tokenInput.Trim(), verifyAlgorithm, keyInput.Trim())
-            : null;
+        var requestId = ++verifySequence;
+        var result = !CanVerify || keyInput.Trim().Length == 0
+            ? null
+            : await TokenVerifier.VerifyAsync(tokenInput.Trim(), verifyAlgorithm, keyInput.Trim(),
+                (signingInput, signature, pem) =>
+                    new ValueTask<bool>(RsaWebCrypto.VerifyAsync(JS, signingInput, signature, pem)));
+
+        // RS256 verification awaits the browser's Web Crypto; a newer request supersedes
+        // this one when the user keeps typing while it is in flight.
+        if (requestId == verifySequence)
+            verdict = result;
     }
 
     private void EditAndReencode()

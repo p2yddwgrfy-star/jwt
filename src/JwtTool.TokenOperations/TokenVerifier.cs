@@ -20,13 +20,29 @@ public sealed record VerifyResult(bool IsValid, string? Reason)
 }
 
 /// <summary>
+/// Decides an RS256 signature over the signing input, expected signature bytes, and PEM key
+/// material. The library defaults to BCL RSA (full .NET); the browser app supplies a
+/// Web Crypto-backed implementation, because .NET on browser WebAssembly has no RSA.
+/// </summary>
+public delegate ValueTask<bool> RsaSignatureVerifier(
+    string signingInput, byte[] expectedSignature, string keyMaterial);
+
+/// <summary>
 /// Strict Verify of a Token's Signature. The algorithm is chosen explicitly and cross-checked
 /// against the Token header's alg; verification never falls back to unsecured.
 /// </summary>
 public static class TokenVerifier
 {
-    public static VerifyResult Verify(string token, SignatureAlgorithm algorithm, string keyMaterial)
+    public static VerifyResult Verify(string token, SignatureAlgorithm algorithm, string keyMaterial) =>
+        VerifyAsync(token, algorithm, keyMaterial).AsTask().GetAwaiter().GetResult();
+
+    public static async ValueTask<VerifyResult> VerifyAsync(
+        string token,
+        SignatureAlgorithm algorithm,
+        string keyMaterial,
+        RsaSignatureVerifier? verifyRsaSignature = null)
     {
+        var verifyRsa = verifyRsaSignature ?? BclRsaSignatureVerifier.VerifyAsync;
         var parts = TokenParts.Of(token);
         if (parts is null)
             return new VerifyResult(false, "A Token is three parts joined by dots; this input does not have three.");
@@ -58,7 +74,7 @@ public static class TokenVerifier
         try
         {
             var valid = algorithm == SignatureAlgorithm.RS256
-                ? VerifyRsaSignature(signingInput, expected, keyMaterial)
+                ? await verifyRsa(signingInput, expected, keyMaterial)
                 : VerifyHmacSignature(algorithm, signingInput, expected, keyMaterial);
 
             return valid
@@ -89,11 +105,16 @@ public static class TokenVerifier
         return CryptographicOperations.FixedTimeEquals(expected, computed);
     }
 
-    private static bool VerifyRsaSignature(string signingInput, byte[] expected, string keyMaterial)
+    /// <summary>BCL RSA — the default on full .NET. The browser app never calls this: WASM has no RSA.</summary>
+    private static class BclRsaSignatureVerifier
     {
-        using var rsa = RSA.Create();
-        rsa.ImportFromPem(keyMaterial);
-        return rsa.VerifyData(Encoding.UTF8.GetBytes(signingInput), expected,
-            System.Security.Cryptography.HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+        public static ValueTask<bool> VerifyAsync(string signingInput, byte[] expected, string keyMaterial)
+        {
+            using var rsa = RSA.Create();
+            rsa.ImportFromPem(keyMaterial);
+            return ValueTask.FromResult(rsa.VerifyData(
+                Encoding.UTF8.GetBytes(signingInput), expected,
+                System.Security.Cryptography.HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1));
+        }
     }
 }

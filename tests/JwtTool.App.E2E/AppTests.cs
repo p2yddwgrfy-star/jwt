@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.Playwright;
 using Xunit;
@@ -79,6 +81,31 @@ public sealed class AppTests(AppFixture fixture)
         var verdict = page.Locator(".verdict");
         await Assertions.Expect(verdict).ToContainTextAsync("Invalid signature.");
         await Assertions.Expect(verdict).ToContainTextAsync("Signature");
+        await Assertions.Expect(verdict).ToHaveClassAsync(new Regex("invalid"));
+    }
+
+    [Fact]
+    public async Task Verify_an_rs256_token_with_a_public_pem_turns_the_verdict_green()
+    {
+        var page = await OpenAppAsync();
+        var (token, matchingPem, foreignPem) = MakeRs256TokenPair();
+
+        await page.Locator("#token-box").FillAsync(token);
+        // Scoped to the Decode tab's verify section: the hidden Encode tab
+        // has its own .verify-controls select, which strict mode would reject.
+        await page.Locator(".verify-section select").SelectOptionAsync("RS256");
+
+        // The key label switched to the PEM wording — the picker actually changed modes.
+        await Assertions.Expect(page.Locator(".verify-section .key-label")).ToContainTextAsync("PEM key pair");
+
+        await page.Locator("#key-box").FillAsync(matchingPem);
+        var verdict = page.Locator(".verdict");
+        await Assertions.Expect(verdict).ToContainTextAsync("Valid signature.");
+        await Assertions.Expect(verdict).ToHaveClassAsync(new Regex("valid"));
+
+        // A different key must not verify: the PEM path is real, not a pass-through.
+        await page.Locator("#key-box").FillAsync(foreignPem);
+        await Assertions.Expect(verdict).ToContainTextAsync("Invalid signature.");
         await Assertions.Expect(verdict).ToHaveClassAsync(new Regex("invalid"));
     }
 
@@ -178,4 +205,28 @@ public sealed class AppTests(AppFixture fixture)
     /// <summary>Strips whitespace so a pretty-printed editor value compares equal to compact JSON.</summary>
     private static string Compact(string json) =>
         Regex.Replace(json, @"\s+", "");
+
+    /// <summary>
+    /// Builds an RS256 token with BCL crypto only — independent of the app under test —
+    /// plus the matching public PEM and a foreign one for the negative case.
+    /// </summary>
+    private static (string Token, string MatchingPublicPem, string ForeignPublicPem) MakeRs256TokenPair()
+    {
+        using var signer = RSA.Create(2048);
+        using var foreign = RSA.Create(2048);
+
+        var header = Base64Url(Encoding.UTF8.GetBytes("""{"alg":"RS256","typ":"JWT"}"""));
+        var payload = Base64Url(Encoding.UTF8.GetBytes("""{"sub":"e2e-rs256"}"""));
+        var signingInput = $"{header}.{payload}";
+        var signature = signer.SignData(
+            Encoding.UTF8.GetBytes(signingInput), HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+
+        return (
+            $"{signingInput}.{Base64Url(signature)}",
+            signer.ExportSubjectPublicKeyInfoPem(),
+            foreign.ExportSubjectPublicKeyInfoPem());
+    }
+
+    private static string Base64Url(byte[] bytes) =>
+        Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
 }
