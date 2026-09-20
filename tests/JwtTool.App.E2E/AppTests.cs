@@ -135,17 +135,44 @@ public sealed class AppTests(AppFixture fixture)
     }
 
     [Fact]
-    public async Task Copy_shows_the_status_hint()
+    public async Task Copy_JSON_shows_copied_and_lands_the_text_on_the_clipboard()
     {
         var page = await OpenAppAsync();
+        // With permission granted, the success path must run — the old either-outcome
+        // assertion passed even if "Copied." could never render (#24).
+        await page.Context.GrantPermissionsAsync(["clipboard-read", "clipboard-write"]);
 
         await page.Locator("#token-box").FillAsync(CanonicalToken);
         await page.GetByRole(AriaRole.Button, new() { Name = "Copy JSON" }).ClickAsync();
 
-        // Either outcome proves the hint path: granted clipboard shows Copied,
-        // a blocked clipboard shows the failure hint — both are the feature.
-        await Assertions.Expect(page.Locator(".copy-status"))
-            .ToContainTextAsync(new Regex("Copied|Copy failed"));
+        await Assertions.Expect(page.Locator(".copy-status")).ToContainTextAsync("Copied.");
+
+        // And the copy is real: header + payload JSON, not a silent no-op.
+        var clipboard = await page.EvaluateAsync<string>("() => navigator.clipboard.readText()");
+        Assert.Contains("HS256", clipboard);
+        Assert.Contains("John Doe", clipboard);
+    }
+
+    [Fact]
+    public async Task Copy_shows_the_failure_hint_when_the_clipboard_is_blocked()
+    {
+        var page = await OpenAppAsync();
+
+        // Simulate a browser that denies clipboard writes, so the catch branch in
+        // Clipboard.CopyAsync runs deterministically instead of depending on
+        // headless permission defaults.
+        await page.AddInitScriptAsync("""
+            Object.defineProperty(navigator, 'clipboard', {
+                value: { writeText: () => Promise.reject(new DOMException('denied', 'NotAllowedError')) }
+            });
+        """);
+        await page.ReloadAsync();
+        await page.WaitForSelectorAsync(".app-title");
+
+        await page.Locator("#token-box").FillAsync(CanonicalToken);
+        await page.GetByRole(AriaRole.Button, new() { Name = "Copy JSON" }).ClickAsync();
+
+        await Assertions.Expect(page.Locator(".copy-status")).ToContainTextAsync("Copy failed");
     }
 
     /// <summary>Strips whitespace so a pretty-printed editor value compares equal to compact JSON.</summary>
