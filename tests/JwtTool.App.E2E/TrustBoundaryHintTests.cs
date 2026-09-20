@@ -21,7 +21,7 @@ public sealed class TrustBoundaryHintTests(AppFixture fixture)
         await page.WaitForSelectorAsync(".app-title");
 
         await page.GetByRole(AriaRole.Tab, new() { Name = "Encode" }).ClickAsync();
-        await page.Locator(".verify-controls select").SelectOptionAsync("RS256");
+        await page.Locator(".encode-controls select").SelectOptionAsync("RS256");
 
         // The RS256 key hint says both halves: no network egress, and page script
         // (such as browser extensions) can read the in-memory key.

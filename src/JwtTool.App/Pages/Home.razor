@@ -234,13 +234,15 @@
             verdict = result;
     }
 
-    private void EditAndReencode()
+    private async Task EditAndReencode()
     {
         if (decoded?.HeaderJson is null || decoded.PayloadJson is null)
             return;
         // EncodeTab stays in the tree (hidden) so its state and reference persist
-        // across tab switches; load directly and switch.
-        _ = encodeTab.Load(decoded.HeaderJson, decoded.PayloadJson);
+        // across tab switches; load directly and switch. Load funnels its known
+        // failures into the encode tab's error display; awaiting keeps any
+        // unexpected exception visible instead of silently discarded.
+        await encodeTab.Load(decoded.HeaderJson, decoded.PayloadJson);
         SwitchTab(Tab.Encode);
     }
 

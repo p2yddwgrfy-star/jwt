@@ -92,7 +92,7 @@ public sealed class AppTests(AppFixture fixture)
 
         await page.Locator("#token-box").FillAsync(token);
         // Scoped to the Decode tab's verify section: the hidden Encode tab
-        // has its own .verify-controls select, which strict mode would reject.
+        // has its own select, which strict mode would reject.
         await page.Locator(".verify-section select").SelectOptionAsync("RS256");
 
         // The key label switched to the PEM wording — the picker actually changed modes.
@@ -138,7 +138,7 @@ public sealed class AppTests(AppFixture fixture)
         await page.Locator("#enc-header").FillAsync("""{"alg":"RS256","typ":"JWT"}""");
         // On the Encode tab only one algorithm select is in the tree (the Decode tab's
         // whole section is not rendered, unlike its hidden EncodeTab counterpart).
-        await page.Locator(".verify-controls select").SelectOptionAsync("RS256");
+        await page.Locator(".encode-controls select").SelectOptionAsync("RS256");
         await page.Locator("#enc-key").FillAsync(privatePem);
 
         var output = page.Locator("#encoded-token");
@@ -182,7 +182,7 @@ public sealed class AppTests(AppFixture fixture)
 
         await page.GetByRole(AriaRole.Tab, new() { Name = "Encode" }).ClickAsync();
         await page.Locator("#enc-header").FillAsync("""{"alg":"RS256","typ":"JWT"}""");
-        await page.Locator(".verify-controls select").SelectOptionAsync("RS256");
+        await page.Locator(".encode-controls select").SelectOptionAsync("RS256");
 
         await page.Locator("#enc-key").FillAsync(privatePem);
         var output = page.Locator("#encoded-token");
@@ -216,7 +216,7 @@ public sealed class AppTests(AppFixture fixture)
 
         await page.GetByRole(AriaRole.Tab, new() { Name = "Encode" }).ClickAsync();
         await page.Locator("#enc-header").FillAsync("""{"alg":"RS256","typ":"JWT"}""");
-        await page.Locator(".verify-controls select").SelectOptionAsync("RS256");
+        await page.Locator(".encode-controls select").SelectOptionAsync("RS256");
 
         var error = page.Locator(".parse-error");
 
