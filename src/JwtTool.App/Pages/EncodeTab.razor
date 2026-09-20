@@ -43,7 +43,14 @@
 }
 else if (encKey.Trim().Length == 0)
 {
-    <p class="hint">Pick a Key to see the signed Token. Nothing leaves your browser.</p>
+    @if (encAlgorithm == SignatureAlgorithm.RS256)
+    {
+        <p class="hint">Pick a private key to sign the Token. It is used without sending it anywhere, but code running in the page (such as browser extensions) can read it.</p>
+    }
+    else
+    {
+        <p class="hint">Pick a Key to see the signed Token. Nothing leaves your browser.</p>
+    }
 }
 else if (encToken is not null)
 {

@@ -152,7 +152,7 @@
 
             @if (keyInput.Trim().Length == 0)
             {
-                <p class="hint">Paste a Key to verify the Signature. It never leaves your browser.</p>
+                <p class="hint">Paste a Key to verify the Signature. It is used without sending it anywhere, but code running in the page (such as browser extensions) can read it.</p>
             }
             else if (verdict is not null)
             {

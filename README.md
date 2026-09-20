@@ -4,7 +4,7 @@ A browser-side tool for decoding, verifying, and encoding JSON Web Tokens — in
 
 **Live site:** https://peterleing.github.io/jwt/
 
-All operations run entirely in your browser. Keys and tokens are never sent to any server, and nothing is persisted — see [ADR-0001](docs/adr/0001-keys-never-leave-the-browser.md). Domain vocabulary lives in [CONTEXT.md](CONTEXT.md).
+All operations run entirely in your browser. Keys and tokens are never sent to any server, and nothing is persisted. Note the trust boundary: "never sent" is a network guarantee — key material still lives in the page's memory, where browser extensions and other page-scoped script can read it. For highly sensitive keys, use a private window with extensions disabled. See [ADR-0001](docs/adr/0001-keys-never-leave-the-browser.md). Domain vocabulary lives in [CONTEXT.md](CONTEXT.md).
 
 ## Features
 
