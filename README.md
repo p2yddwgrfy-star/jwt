@@ -63,6 +63,7 @@ The solution has four projects:
 | `src/JwtTool.App` | Blazor WebAssembly UI (thin binding over the library) |
 | `src/JwtTool.TokenOperations` | The Token Operations seam: Decode, Verify, Encode |
 | `tests/JwtTool.TokenOperations.Tests` | xUnit unit tests at the Token Operations seam |
+| `tests/JwtTool.App.Tests` | xUnit unit tests for app internals (interop seam), no browser |
 | `tests/JwtTool.App.E2E` | Playwright end-to-end tests: spawn the real app and drive it in Chromium |
 
 JWT logic is covered at the library seam (round-trip, warning catalog, strict-verify tests); the E2E suite covers the UI flows themselves — decode, verify, encode, tab-switch state, and the tweak-and-re-encode path — in the Pages-shaped `/jwt/` layout.

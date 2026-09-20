@@ -23,7 +23,9 @@ jobs:
           dotnet-version: 10.0.x
 
       - name: Run unit tests
-        run: dotnet test tests/JwtTool.TokenOperations.Tests
+        run: |
+          dotnet test tests/JwtTool.TokenOperations.Tests
+          dotnet test tests/JwtTool.App.Tests
 
   e2e:
     name: Browser E2E tests
