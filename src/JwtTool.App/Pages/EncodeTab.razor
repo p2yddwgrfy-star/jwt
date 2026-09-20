@@ -64,6 +64,7 @@ else if (encToken is not null)
     private string? encToken;
     private string? encError;
     private string? copyStatus;
+    private readonly RequestSequenceGuard encodeGuard = new();
 
     private static string[] AlgorithmNames => Enum.GetNames<SignatureAlgorithm>();
 
@@ -87,20 +88,25 @@ else if (encToken is not null)
 
     private async Task Reencode()
     {
+        var requestId = encodeGuard.NextRequestId();
         encToken = null;
         encError = null;
         if (encKey.Trim().Length == 0)
             return;
         try
         {
-            encToken = encAlgorithm == SignatureAlgorithm.RS256
+            var encodedToken = encAlgorithm == SignatureAlgorithm.RS256
                 ? await TokenEncoder.EncodeAsync(encHeader, encPayload, encAlgorithm, encKey,
                     (signingInput, pem) => new ValueTask<byte[]>(RsaWebCrypto.SignAsync(JS, signingInput, pem)))
                 : TokenEncoder.Encode(encHeader, encPayload, encAlgorithm, encKey);
+
+            if (encodeGuard.IsLatest(requestId))
+                encToken = encodedToken;
         }
         catch (ArgumentException ex)
         {
-            encError = ex.Message;
+            if (encodeGuard.IsLatest(requestId))
+                encError = ex.Message;
         }
     }
 
