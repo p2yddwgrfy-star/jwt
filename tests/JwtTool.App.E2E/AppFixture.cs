@@ -44,6 +44,7 @@ public sealed class AppFixture : IAsyncLifetime
         _app.BeginErrorReadLine();
 
         // WASM apps take several seconds to boot; poll until the page shell answers.
+        var ready = false;
         using var http = new HttpClient();
         var deadline = DateTime.UtcNow.AddSeconds(120);
         while (DateTime.UtcNow < deadline)
@@ -55,11 +56,16 @@ public sealed class AppFixture : IAsyncLifetime
             {
                 using var resp = await http.GetAsync($"{BaseUrl}/jwt/");
                 if (resp.IsSuccessStatusCode)
+                {
+                    ready = true;
                     break;
+                }
             }
             catch (HttpRequestException) { /* not up yet */ }
             await Task.Delay(500);
         }
+        if (!ready)
+            throw new TimeoutException($"App did not answer at {BaseUrl}/jwt/ within 120s.");
 
         _playwright = await Playwright.CreateAsync();
     }
