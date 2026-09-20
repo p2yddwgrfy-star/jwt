@@ -6,6 +6,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/JwtTool.App.E2E/JwtTool.App.E2E.csproj" />
     <Project Path="tests/JwtTool.App.Tests/JwtTool.App.Tests.csproj" />
+    <Project Path="tests/JwtTool.App.Render.Tests/JwtTool.App.Render.Tests.csproj" />
     <Project Path="tests/JwtTool.TokenOperations.Tests/JwtTool.TokenOperations.Tests.csproj" />
   </Folder>
 </Solution>

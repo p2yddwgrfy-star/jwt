@@ -26,6 +26,7 @@ jobs:
         run: |
           dotnet test tests/JwtTool.TokenOperations.Tests
           dotnet test tests/JwtTool.App.Tests
+          dotnet test tests/JwtTool.App.Render.Tests
 
   e2e:
     name: Browser E2E tests

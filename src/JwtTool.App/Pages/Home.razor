@@ -21,7 +21,7 @@
                   placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOi..."></textarea>
         @if (tokenInput.Length > 0)
         {
-            <button class="ghost" @onclick="ClearInput">Clear</button>
+            <button class="ghost" id="clear-input" @onclick="ClearInput">Clear</button>
         }
     </div>
 
