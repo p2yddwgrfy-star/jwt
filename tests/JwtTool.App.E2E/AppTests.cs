@@ -50,7 +50,9 @@ public sealed class AppTests(AppFixture fixture)
 
         var error = page.Locator(".parse-error");
         await Assertions.Expect(error).ToBeVisibleAsync();
-        await Assertions.Expect(error).ToContainTextAsync("Not a token.");
+        // The ParseError is the sole message — no hard-coded lead-in next to it (#21).
+        await Assertions.Expect(error).ToContainTextAsync("this input has 1 part(s)");
+        await Assertions.Expect(error).Not.ToContainTextAsync("Not a token.");
     }
 
     [Fact]

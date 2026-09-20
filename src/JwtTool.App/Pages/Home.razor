@@ -31,9 +31,7 @@
     }
     else if (decoded.IsUnparseable)
     {
-        <div class="parse-error">
-            <strong>Not a token.</strong> @decoded.ParseError
-        </div>
+        <div class="parse-error">@decoded.ParseError</div>
     }
     else
     {
