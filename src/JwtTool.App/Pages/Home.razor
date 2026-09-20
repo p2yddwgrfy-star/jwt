@@ -198,26 +198,23 @@
         get
         {
             if (decoded is null || decoded.IsUnparseable) return false;
-            var parts = TokenParts;
-            return parts.Length == 3 || (parts.Length == 4 && parts[3].Length == 0);
+            return tokenParts is not null; // TokenParts.Of already applied the trailing-dot rule
         }
     }
 
-    private string[] TokenParts => tokenParts;
+    private string[]? tokenParts;
 
-    private string[] tokenParts = [];
-
-    private string? HeaderPart => decoded?.HeaderJson is null ? null : TokenParts.ElementAtOrDefault(0);
-    private string? PayloadPart => decoded?.PayloadJson is null ? null : TokenParts.ElementAtOrDefault(1);
+    private string? HeaderPart => decoded?.HeaderJson is null ? null : tokenParts?.ElementAtOrDefault(0);
+    private string? PayloadPart => decoded?.PayloadJson is null ? null : tokenParts?.ElementAtOrDefault(1);
 
     private (string Header, string Payload, string Signature) Parts =>
-        (HeaderPart ?? "", PayloadPart ?? "", TokenParts.ElementAtOrDefault(2) ?? "");
+        (HeaderPart ?? "", PayloadPart ?? "", tokenParts?.ElementAtOrDefault(2) ?? "");
 
     private void SwitchTab(Tab tab) => activeTab = tab;
 
     private void TokenInputChanged()
     {
-        tokenParts = tokenInput.Trim().Split('.');
+        tokenParts = TokenParts.Of(tokenInput);
         decoded = tokenInput.Trim().Length == 0 ? null : TokenDecoder.Decode(tokenInput.Trim());
         Reverify();
     }

@@ -1,8 +1,10 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/JwtTool.App/JwtTool.App.csproj" />
+    <Project Path="src/JwtTool.TokenOperations/JwtTool.TokenOperations.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/JwtTool.App.E2E/JwtTool.App.E2E.csproj" />
+    <Project Path="tests/JwtTool.TokenOperations.Tests/JwtTool.TokenOperations.Tests.csproj" />
   </Folder>
 </Solution>

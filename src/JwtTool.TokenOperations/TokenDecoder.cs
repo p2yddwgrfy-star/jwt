@@ -32,15 +32,13 @@ public static class TokenDecoder
 
     public static DecodeResult Decode(string token)
     {
-        var parts = token.Split('.');
-        if (parts.Length == 4 && parts[3].Length == 0)
-            parts = parts[..3]; // tolerate a single trailing dot: an empty Signature part, not a fourth part
-        if (parts.Length != 3)
+        var parts = TokenParts.Of(token);
+        if (parts is null)
         {
             return DecodeResult.Unparseable with
             {
                 ParseError = "A Token is three base64url parts joined by dots " +
-                             $"(header.payload.signature); this input has {parts.Length} part(s).",
+                             $"(header.payload.signature); this input has {token.Trim().Split('.').Length} part(s).",
             };
         }
 
