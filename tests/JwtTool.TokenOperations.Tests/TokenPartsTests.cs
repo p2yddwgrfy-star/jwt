@@ -56,4 +56,30 @@ public class TokenPartsTests
 
         Assert.Equal(["h ", " p ", " s"], parts);
     }
+
+    [Fact]
+    public void Split_returns_the_parts_and_their_count_for_a_valid_token()
+    {
+        var split = TokenParts.Split("h.p.s");
+
+        Assert.Equal(["h", "p", "s"], split.Parts);
+        Assert.Equal(3, split.RawPartCount);
+    }
+
+    [Fact]
+    public void Split_reports_the_raw_part_count_for_invalid_input()
+    {
+        var twoParts = TokenParts.Split("h.p");
+        Assert.Null(twoParts.Parts);
+        Assert.Equal(2, twoParts.RawPartCount);
+
+        var fourParts = TokenParts.Split("h.p.s.x");
+        Assert.Null(fourParts.Parts);
+        Assert.Equal(4, fourParts.RawPartCount);
+
+        // The tolerated single trailing dot collapses before counting:
+        var trailingDot = TokenParts.Split("h.p.s.");
+        Assert.Equal(new[] { "h", "p", "s" }, trailingDot.Parts);
+        Assert.Equal(3, trailingDot.RawPartCount);
+    }
 }

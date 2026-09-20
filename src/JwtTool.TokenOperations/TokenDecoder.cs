@@ -32,15 +32,16 @@ public static class TokenDecoder
 
     public static DecodeResult Decode(string token)
     {
-        var parts = TokenParts.Of(token);
-        if (parts is null)
+        var split = TokenParts.Split(token);
+        if (split.Parts is null)
         {
             return DecodeResult.Unparseable with
             {
                 ParseError = "A Token is three base64url parts joined by dots " +
-                             $"(header.payload.signature); this input has {token.Trim().Split('.').Length} part(s).",
+                             $"(header.payload.signature); this input has {split.RawPartCount} part(s).",
             };
         }
+        var parts = split.Parts;
 
         var (headerJson, header, headerWarnings) = DecodePart(parts[0], "Header");
         var (payloadJson, payload, payloadWarnings) = DecodePart(parts[1], "Payload");

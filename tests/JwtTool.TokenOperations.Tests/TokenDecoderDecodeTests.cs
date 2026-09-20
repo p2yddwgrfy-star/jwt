@@ -87,6 +87,15 @@ public class TokenDecoderDecodeTests
         Assert.Equal("SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c", result.SignatureBase64Url);
     }
 
+    [Fact]
+    public void Decode_reports_the_true_part_count_for_a_four_part_input()
+    {
+        var result = TokenDecoder.Decode(CanonicalToken + ".extra");
+
+        Assert.True(result.IsUnparseable);
+        Assert.Contains("this input has 4 part(s)", result.ParseError);
+    }
+
     /// Encodes a payload into a three-part token with an HS256-style header.
     /// Independent of the implementation under test: plain base64url encoding of known JSON.
     private static string MakeToken(string payloadJson)

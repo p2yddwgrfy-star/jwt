@@ -202,6 +202,35 @@ public sealed class AppTests(AppFixture fixture)
         await Assertions.Expect(page.Locator(".copy-status")).ToContainTextAsync("Copy failed");
     }
 
+    [Fact]
+    public async Task The_app_drives_its_main_flows_without_any_console_errors()
+    {
+        // Collectors attach before the app renders so boot-time failures are caught too:
+        // a renderer crash used to surface only as generic per-test timeouts (#28).
+        var page = await fixture.OpenPageAsync();
+        var consoleErrors = new List<string>();
+        page.Console += (_, msg) =>
+        {
+            if (msg.Type == "error")
+                consoleErrors.Add(msg.Text);
+        };
+        page.PageError += (_, exception) => consoleErrors.Add($"uncaught: {exception}");
+        await page.WaitForSelectorAsync(".app-title");
+
+        // Drive every main flow once: decode, verify, encode, tab switch.
+        await page.Locator("#token-box").FillAsync(CanonicalToken);
+        await page.Locator("#key-box").FillAsync(CanonicalSecret);
+        await page.GetByRole(AriaRole.Tab, new() { Name = "Encode" }).ClickAsync();
+        await page.Locator("#enc-header").FillAsync("""{"alg":"HS256","typ":"JWT"}""");
+        await page.Locator("#enc-payload").FillAsync("""{"sub":"smoke"}""");
+        await page.Locator("#enc-key").FillAsync(CanonicalSecret);
+        await page.GetByRole(AriaRole.Tab, new() { Name = "Decode" }).ClickAsync();
+
+        // Fail with the actual browser-side exception, not a timeout.
+        Assert.True(consoleErrors.Count == 0,
+            $"Expected no console errors, but got:\n{string.Join("\n", consoleErrors)}");
+    }
+
     /// <summary>Strips whitespace so a pretty-printed editor value compares equal to compact JSON.</summary>
     private static string Compact(string json) =>
         Regex.Replace(json, @"\s+", "");

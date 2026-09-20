@@ -69,7 +69,7 @@ JWT logic is covered at the library seam (round-trip, warning catalog, strict-ve
 
 ### Deployment
 
-`push` to `main` runs [.github/workflows/deploy-pages.yml](.github/workflows/deploy-pages.yml): unit tests, publishes the static site, and deploys to GitHub Pages at the `/jwt/` subpath — and [.github/workflows/e2e.yml](.github/workflows/e2e.yml) runs the browser end-to-end suite. No manual steps.
+`push` to `main` runs one pipeline, [.github/workflows/deploy-pages.yml](.github/workflows/deploy-pages.yml): unit tests and the browser end-to-end suite run in parallel as gates, and the static site is published and deployed to GitHub Pages at the `/jwt/` subpath only when both are green. No manual steps.
 
 Known limitation: GitHub Pages does not let you set HTTP response headers, so a strict Content-Security-Policy cannot be enforced there. The app's design already minimizes what a CSP would guard (no backend, no data leaves the browser — see ADR-0001). A self-hosted deployment can add a strict CSP.
 
