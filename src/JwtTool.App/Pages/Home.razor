@@ -124,53 +124,14 @@
             </section>
         </div>
 
-        <div class="verify-section">
-            <h2>Verify</h2>
-            <div class="verify-controls">
-                <label>
-                    Algorithm
-                    <select @bind="verifyAlgorithm" @bind:after="Reverify">
-                        @foreach (var name in AlgorithmNames)
-                        {
-                            <option value="@name">@name</option>
-                        }
-                    </select>
-                </label>
-                <label class="key-label">
-                    Key — @if (verifyAlgorithm == SignatureAlgorithm.RS256)
-                    {
-                        <text>PEM key pair (public or private key)</text>
-                    }
-                    else
-                    {
-                        <text>the Secret as text</text>
-                    }
-                    <textarea id="key-box" rows="3" @bind="keyInput" @bind:event="oninput" @bind:after="Reverify"
-                              placeholder="@KeyPlaceholder"></textarea>
-                </label>
-            </div>
-
-            @if (keyInput.Trim().Length == 0)
-            {
-                <p class="hint">Paste a Key to verify the Signature. It is used without sending it anywhere, but code running in the page (such as browser extensions) can read it.</p>
-            }
-            else if (verdict is not null)
-            {
-                <div class="verdict @(!verdict.IsValid ? "invalid" : "valid")">
-                    <strong>@(verdict.IsValid ? "Valid signature." : "Invalid signature.")</strong>
-                    @if (!verdict.IsValid)
-                    {
-                        <span>@verdict.Reason</span>
-                    }
-                </div>
-            }
-        </div>
+        <VerifySection TokenText="@tokenInput" KeyText="@keyInput" KeyTextChanged="@(v => keyInput = v)" />
     }
 }
 
-<div hidden="@(activeTab != Tab.Encode)">
-    <EncodeTab @ref="encodeTab" />
-</div>
+@if (activeTab == Tab.Encode)
+{
+    <EncodeTab Draft="@encDraft" DraftChanged="@(d => encDraft = d)" />
+}
 
 @code {
     private enum Tab { Decode, Encode }
@@ -180,25 +141,10 @@
     private string tokenInput = "";
     private string keyInput = "";
     private DecodeResult? decoded;
-    private VerifyResult? verdict;
-    private SignatureAlgorithm verifyAlgorithm = SignatureAlgorithm.HS256;
 
-    private EncodeTab encodeTab = default!;
-
-    private static string[] AlgorithmNames => Enum.GetNames<SignatureAlgorithm>();
-
-    private string KeyPlaceholder => verifyAlgorithm == SignatureAlgorithm.RS256
-        ? "-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----"
-        : "your-256-bit-secret";
-
-    private bool CanVerify
-    {
-        get
-        {
-            if (decoded is null || decoded.IsUnparseable) return false;
-            return tokenParts is not null; // TokenParts.Of already applied the trailing-dot rule
-        }
-    }
+    // The Encode draft, owned by the page so it survives tab switches (#9).
+    private EncodeDraft encDraft = new(
+        """{"alg":"HS256","typ":"JWT"}""", DefaultEncodePayload(), "", SignatureAlgorithm.HS256);
 
     private string[]? tokenParts;
 
@@ -214,35 +160,14 @@
     {
         tokenParts = TokenParts.Of(tokenInput);
         decoded = tokenInput.Trim().Length == 0 ? null : TokenDecoder.Decode(tokenInput.Trim());
-        await Reverify();
-    }
-
-    private readonly RequestSequenceGuard verifyGuard = new();
-
-    private async Task Reverify()
-    {
-        var requestId = verifyGuard.NextRequestId();
-        var result = !CanVerify || keyInput.Trim().Length == 0
-            ? null
-            : await TokenVerifier.VerifyAsync(tokenInput.Trim(), verifyAlgorithm, keyInput.Trim(),
-                (signingInput, signature, pem) =>
-                    new ValueTask<bool>(RsaWebCrypto.VerifyAsync(JS, signingInput, signature, pem)));
-
-        // RS256 verification awaits the browser's Web Crypto; a newer request supersedes
-        // this one when the user keeps typing while it is in flight.
-        if (verifyGuard.IsLatest(requestId))
-            verdict = result;
     }
 
     private async Task EditAndReencode()
     {
         if (decoded?.HeaderJson is null || decoded.PayloadJson is null)
             return;
-        // EncodeTab stays in the tree (hidden) so its state and reference persist
-        // across tab switches; load directly and switch. Load funnels its known
-        // failures into the encode tab's error display; awaiting keeps any
-        // unexpected exception visible instead of silently discarded.
-        await encodeTab.Load(decoded.HeaderJson, decoded.PayloadJson);
+        // The draft is page state: loading it and switching the tab is the whole handoff.
+        encDraft = encDraft with { HeaderJson = decoded.HeaderJson, PayloadJson = decoded.PayloadJson };
         SwitchTab(Tab.Encode);
     }
 
@@ -259,7 +184,12 @@
         tokenInput = "";
         keyInput = "";
         decoded = null;
-        verdict = null;
         tokenParts = null;
+    }
+
+    private static string DefaultEncodePayload()
+    {
+        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        return $$"""{"sub":"1234567890","name":"John Doe","iat":{{now}},"exp":{{now + 3600}}}""";
     }
 }

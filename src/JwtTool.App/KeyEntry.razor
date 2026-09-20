@@ -1,0 +1,77 @@
+@using JwtTool.TokenOperations
+
+<div class="@ControlsClass">
+    <label>
+        Algorithm
+        <select @bind="Algorithm" @bind:after="OnAlgorithmChanged">
+            @foreach (var name in AlgorithmNames)
+            {
+                <option value="@name">@name</option>
+            }
+        </select>
+    </label>
+    <label class="key-label">
+        Key — @if (Algorithm == SignatureAlgorithm.RS256)
+        {
+            <text>@RsaKeyWording</text>
+        }
+        else
+        {
+            <text>the Secret as text</text>
+        }
+        <textarea id="@TextAreaId" rows="3" @bind="KeyText" @bind:event="oninput" @bind:after="OnKeyInput"
+                  placeholder="@(Algorithm == SignatureAlgorithm.RS256 ? RsaKeyPlaceholder : SecretPlaceholder)"></textarea>
+    </label>
+</div>
+
+@if (ShowHint && KeyText.Trim().Length == 0)
+{
+    <p class="hint">@HintText</p>
+}
+
+@code {
+    /// <summary>The trust-boundary sentence (#32), written here exactly once for Verify and Encode.</summary>
+    private const string TrustBoundary =
+        "It is used without sending it anywhere, but code running in the page (such as browser extensions) can read it.";
+
+    private const string SecretPlaceholder = "your-256-bit-secret";
+
+    private static string[] AlgorithmNames => Enum.GetNames<SignatureAlgorithm>();
+
+    /// <summary>The chosen algorithm; changes flow back through <see cref="AlgorithmChanged"/>.</summary>
+    [Parameter, EditorRequired] public SignatureAlgorithm Algorithm { get; set; }
+
+    [Parameter, EditorRequired] public EventCallback<SignatureAlgorithm> AlgorithmChanged { get; set; }
+
+    /// <summary>The Key text, owned by the caller; changes flow back through <see cref="KeyTextChanged"/>.</summary>
+    [Parameter, EditorRequired] public string KeyText { get; set; } = "";
+
+    [Parameter, EditorRequired] public EventCallback<string> KeyTextChanged { get; set; }
+
+    /// <summary>The id for the key textarea, so tests and labels can find it.</summary>
+    [Parameter, EditorRequired] public string TextAreaId { get; set; } = "";
+
+    /// <summary>The container class, matching the page's existing CSS hooks (verify-controls / encode-controls).</summary>
+    [Parameter, EditorRequired] public string ControlsClass { get; set; } = "";
+
+    /// <summary>The label wording for an RS256 Key — a key pair to verify, a private key to Encode.</summary>
+    [Parameter, EditorRequired] public string RsaKeyWording { get; set; } = "";
+
+    /// <summary>The placeholder shown for an RS256 Key.</summary>
+    [Parameter, EditorRequired] public string RsaKeyPlaceholder { get; set; } = "";
+
+    /// <summary>The flow-specific first sentence of the empty-key hint.</summary>
+    [Parameter, EditorRequired] public string HintLead { get; set; } = "";
+
+    /// <summary>Whether the hint carries the trust-boundary sentence (Verify: always; Encode: RS256 only).</summary>
+    [Parameter] public bool BoundaryHint { get; set; } = true;
+
+    /// <summary>Whether the hint renders at all; callers suppress it when an error is shown instead.</summary>
+    [Parameter] public bool ShowHint { get; set; } = true;
+
+    private string HintText => BoundaryHint ? $"{HintLead} {TrustBoundary}" : HintLead;
+
+    private Task OnAlgorithmChanged() => AlgorithmChanged.InvokeAsync(Algorithm);
+
+    private Task OnKeyInput() => KeyTextChanged.InvokeAsync(KeyText);
+}

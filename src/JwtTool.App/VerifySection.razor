@@ -1,0 +1,73 @@
+@using JwtTool.TokenOperations
+@inject IJSRuntime JS
+
+<div class="verify-section">
+    <h2>Verify</h2>
+    <KeyEntry ControlsClass="verify-controls"
+              TextAreaId="key-box"
+              Algorithm="algorithm"
+              AlgorithmChanged="@(a => algorithm = a)"
+              KeyText="@KeyText"
+              KeyTextChanged="KeyTextChanged"
+              RsaKeyWording="PEM key pair (public or private key)"
+              RsaKeyPlaceholder="@PublicKeyPlaceholder"
+              HintLead="Paste a Key to verify the Signature." />
+
+    @if (verdict is not null)
+    {
+        <div class="verdict @(!verdict.IsValid ? "invalid" : "valid")">
+            <strong>@(verdict.IsValid ? "Valid signature." : "Invalid signature.")</strong>
+            @if (!verdict.IsValid)
+            {
+                <span>@verdict.Reason</span>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private const string PublicKeyPlaceholder = "-----BEGIN PUBLIC KEY-----\n...\n-----END PUBLIC KEY-----";
+
+    /// <summary>The Token to verify, exactly as pasted; the flow applies the trailing-dot rule.</summary>
+    [Parameter, EditorRequired] public string TokenText { get; set; } = "";
+
+    /// <summary>The Key text, owned by the page so Clear can reset it and it survives an
+    /// unparseable-token detour; changes flow back through <see cref="KeyTextChanged"/>.</summary>
+    [Parameter] public string KeyText { get; set; } = "";
+
+    [Parameter] public EventCallback<string> KeyTextChanged { get; set; }
+
+    private SignatureAlgorithm algorithm = SignatureAlgorithm.HS256;
+    private VerifyResult? verdict;
+
+    // RS256 verification goes through the browser's Web Crypto — WASM has no RSA (ADR-0002).
+    private VerifyFlow flow = default!;
+
+    protected override void OnInitialized() =>
+        flow = new((signingInput, signature, pem) =>
+            new ValueTask<bool>(RsaWebCrypto.VerifyAsync(JS, signingInput, signature, pem)));
+
+    // The token and Key only change when the pasted input or a key edit does; re-verify
+    // then, not on every parent re-render (key edits arrive here through KeyEntry's
+    // key-changed event, so they re-verify exactly like they did inline).
+    private string? lastSeenToken;
+    private string? lastSeenKey;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (lastSeenToken == TokenText && lastSeenKey == KeyText)
+            return;
+        lastSeenToken = TokenText;
+        lastSeenKey = KeyText;
+        await Reverify();
+    }
+
+    private async Task Reverify()
+    {
+        await flow.VerifyAsync(TokenText, algorithm, KeyText, v =>
+        {
+            verdict = v;
+            StateHasChanged();
+        });
+    }
+}

@@ -4,57 +4,36 @@
 <div class="encode-grid">
     <label>
         Header
-        <textarea id="enc-header" rows="6" @bind="encHeader" @bind:event="oninput" @bind:after="Reencode"></textarea>
+        <textarea id="enc-header" rows="6" value="@Draft.HeaderJson" @oninput="OnHeaderInput"></textarea>
     </label>
     <label>
         Payload
-        <textarea id="enc-payload" rows="6" @bind="encPayload" @bind:event="oninput" @bind:after="Reencode"></textarea>
+        <textarea id="enc-payload" rows="6" value="@Draft.PayloadJson" @oninput="OnPayloadInput"></textarea>
     </label>
 </div>
 
-<div class="encode-controls">
-    <label>
-        Algorithm
-        <select @bind="encAlgorithm" @bind:after="Reencode">
-            @foreach (var name in AlgorithmNames)
-            {
-                <option value="@name">@name</option>
-            }
-        </select>
-    </label>
-    <label class="key-label">
-        Key — @if (encAlgorithm == SignatureAlgorithm.RS256)
-        {
-            <text>PEM private key</text>
-        }
-        else
-        {
-            <text>the Secret as text</text>
-        }
-        <textarea id="enc-key" rows="3" @bind="encKey" @bind:event="oninput" @bind:after="Reencode"
-                  placeholder="@(encAlgorithm == SignatureAlgorithm.RS256 ? RsaPlaceholder : "your-256-bit-secret")"></textarea>
-    </label>
-</div>
+<KeyEntry ControlsClass="encode-controls"
+          TextAreaId="enc-key"
+          Algorithm="Draft.Algorithm"
+          AlgorithmChanged="OnAlgorithmChanged"
+          KeyText="@Draft.Key"
+          KeyTextChanged="OnKeyInput"
+          RsaKeyWording="PEM private key"
+          RsaKeyPlaceholder="@PrivateKeyPlaceholder"
+          HintLead="@(Draft.Algorithm == SignatureAlgorithm.RS256
+              ? "Pick a private key to sign the Token."
+              : "Pick a Key to see the signed Token. Nothing leaves your browser.")"
+          BoundaryHint="@(Draft.Algorithm == SignatureAlgorithm.RS256)"
+          ShowHint="@(Error is null)" />
 
 <h2 class="section-title">Token</h2>
-@if (encError is not null)
+@if (Error is not null)
 {
-    <div class="parse-error">@encError</div>
+    <div class="parse-error">@Error</div>
 }
-else if (encKey.Trim().Length == 0)
+else if (Token is not null)
 {
-    @if (encAlgorithm == SignatureAlgorithm.RS256)
-    {
-        <p class="hint">Pick a private key to sign the Token. It is used without sending it anywhere, but code running in the page (such as browser extensions) can read it.</p>
-    }
-    else
-    {
-        <p class="hint">Pick a Key to see the signed Token. Nothing leaves your browser.</p>
-    }
-}
-else if (encToken is not null)
-{
-    var encParts = encToken.Split('.');
+    var encParts = Token.Split('.');
     <pre class="json token-output" id="encoded-token"><span class="part header-part">@encParts.ElementAtOrDefault(0)</span>.<span class="part payload-part">@encParts.ElementAtOrDefault(1)</span>.<span class="part signature-part">@encParts.ElementAtOrDefault(2)</span></pre>
     <button class="ghost" @onclick="CopyEncodedToken">Copy token</button>
     @if (copyStatus is not null)
@@ -64,59 +43,66 @@ else if (encToken is not null)
 }
 
 @code {
-    private string encHeader = """{"alg":"HS256","typ":"JWT"}""";
-    private string encPayload = DefaultPayload();
-    private string encKey = "";
-    private SignatureAlgorithm encAlgorithm = SignatureAlgorithm.HS256;
-    private string? encToken;
-    private string? encError;
+    private const string PrivateKeyPlaceholder = "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----";
+
+    // The Encode draft is owned by the page (tab state); this component is its
+    // stateless presenter: draft in as one parameter, edits out as one event.
+    [Parameter, EditorRequired] public EncodeDraft Draft { get; set; } = new("", "", "", SignatureAlgorithm.HS256);
+
+    [Parameter, EditorRequired] public EventCallback<EncodeDraft> DraftChanged { get; set; }
+
+    private string? Token { get; set; }
+    private string? Error { get; set; }
     private string? copyStatus;
-    private readonly RequestSequenceGuard encodeGuard = new();
 
-    private static string[] AlgorithmNames => Enum.GetNames<SignatureAlgorithm>();
+    // RS256 signing goes through the browser's Web Crypto — WASM has no RSA (ADR-0002).
+    private EncodeFlow flow = default!;
 
-    private const string RsaPlaceholder = "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----";
+    protected override void OnInitialized() =>
+        flow = new((signingInput, pem) =>
+            new ValueTask<byte[]>(RsaWebCrypto.SignAsync(JS, signingInput, pem)));
 
-    private static string DefaultPayload()
+    private Task OnHeaderInput(ChangeEventArgs e) => Emit(e.Value?.ToString() ?? "", null, null, null);
+
+    private Task OnPayloadInput(ChangeEventArgs e) => Emit(null, e.Value?.ToString() ?? "", null, null);
+
+    private Task OnKeyInput(string keyText) => Emit(null, null, keyText, null);
+
+    private Task OnAlgorithmChanged(SignatureAlgorithm algorithm) => Emit(null, null, null, algorithm);
+
+    private Task Emit(string? header, string? payload, string? key, SignatureAlgorithm? algorithm)
     {
-        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-        return $$"""{"sub":"1234567890","name":"John Doe","iat":{{now}},"exp":{{now + 3600}}}""";
+        var draft = Draft with
+        {
+            HeaderJson = header ?? Draft.HeaderJson,
+            PayloadJson = payload ?? Draft.PayloadJson,
+            Key = key ?? Draft.Key,
+            Algorithm = algorithm ?? Draft.Algorithm,
+        };
+        return DraftChanged.InvokeAsync(draft);
     }
 
-    /// Loads the given header and payload into the editors, as the Decode tab's
-    /// "Tweak & re-encode" does. Public so the parent can drive it.
-    public async Task Load(string headerJson, string payloadJson)
+    // Re-encode only when the draft actually changed, not on every parent re-render.
+    private EncodeDraft? lastSeenDraft;
+
+    protected override Task OnParametersSetAsync()
     {
-        encHeader = headerJson;
-        encPayload = payloadJson;
-        await Reencode();
-        StateHasChanged();
+        if (lastSeenDraft == Draft)
+            return Task.CompletedTask;
+        lastSeenDraft = Draft;
+        return Reencode();
     }
 
     private async Task Reencode()
     {
-        var requestId = encodeGuard.NextRequestId();
-        encToken = null;
-        encError = null;
-        if (encKey.Trim().Length == 0)
-            return;
-        try
+        await flow.EncodeAsync(Draft, outcome =>
         {
-            var encodedToken = encAlgorithm == SignatureAlgorithm.RS256
-                ? await TokenEncoder.EncodeAsync(encHeader, encPayload, encAlgorithm, encKey,
-                    (signingInput, pem) => new ValueTask<byte[]>(RsaWebCrypto.SignAsync(JS, signingInput, pem)))
-                : TokenEncoder.Encode(encHeader, encPayload, encAlgorithm, encKey);
-
-            if (encodeGuard.IsLatest(requestId))
-                encToken = encodedToken;
-        }
-        catch (ArgumentException ex)
-        {
-            if (encodeGuard.IsLatest(requestId))
-                encError = ex.Message;
-        }
+            Token = outcome.Token;
+            Error = outcome.Error;
+            StateHasChanged();
+        });
     }
 
     private async Task CopyEncodedToken() =>
-        copyStatus = await Clipboard.CopyAsync(JS, encToken ?? "");
+        copyStatus = await Clipboard.CopyAsync(JS, Token ?? "");
 }
