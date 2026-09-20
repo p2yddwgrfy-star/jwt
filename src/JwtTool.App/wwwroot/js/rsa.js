@@ -18,9 +18,21 @@ window.jwtRsa = {
         const algorithm = { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' };
         const key = await crypto.subtle.importKey('pkcs8', der, algorithm, false, ['sign']);
         const signature = await crypto.subtle.sign(algorithm, key, new TextEncoder().encode(signingInput));
-        return Array.from(new Uint8Array(signature));
+        // .NET's InvokeAsync<byte[]> deserializes a base64 string (System.Text.Json's
+        // byte[] format) — a plain JS array of numbers does not convert.
+        return arrayBufferToBase64(signature);
     }
 };
+
+function arrayBufferToBase64(buffer) {
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    const chunk = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunk) {
+        binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+    }
+    return btoa(binary);
+}
 
 function pemToDer(pem) {
     const base64 = pem.replace(/-----(BEGIN|END)[^-]*-----/g, '').replace(/\s+/g, '');
