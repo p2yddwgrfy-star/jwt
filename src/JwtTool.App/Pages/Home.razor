@@ -217,11 +217,11 @@
         await Reverify();
     }
 
-    private int verifySequence;
+    private readonly RequestSequenceGuard verifyGuard = new();
 
     private async Task Reverify()
     {
-        var requestId = ++verifySequence;
+        var requestId = verifyGuard.NextRequestId();
         var result = !CanVerify || keyInput.Trim().Length == 0
             ? null
             : await TokenVerifier.VerifyAsync(tokenInput.Trim(), verifyAlgorithm, keyInput.Trim(),
@@ -230,7 +230,7 @@
 
         // RS256 verification awaits the browser's Web Crypto; a newer request supersedes
         // this one when the user keeps typing while it is in flight.
-        if (requestId == verifySequence)
+        if (verifyGuard.IsLatest(requestId))
             verdict = result;
     }
 
