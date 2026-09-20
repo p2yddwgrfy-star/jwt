@@ -1,22 +1,20 @@
-name: Deploy to GitHub Pages
+name: Test and deploy to GitHub Pages
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
 
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
 concurrency:
   group: pages
   cancel-in-progress: true
 
 jobs:
-  build:
+  unit:
+    name: Unit tests
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
@@ -27,6 +25,48 @@ jobs:
       - name: Run unit tests
         run: dotnet test tests/JwtTool.TokenOperations.Tests
 
+  e2e:
+    name: Browser E2E tests
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Build
+        run: dotnet build JwtTool.slnx
+
+      - name: Install Playwright Chromium
+        run: pwsh tests/JwtTool.App.E2E/bin/Debug/net10.0/playwright.ps1 install chromium
+
+      - name: Run E2E tests
+        run: dotnet test tests/JwtTool.App.E2E --no-build
+
+      - name: Upload test results on failure
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: e2e-results
+          path: tests/JwtTool.App.E2E/TestResults
+          if-no-files-found: ignore
+
+  build:
+    name: Publish static site
+    needs: [unit, e2e]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: 10.0.x
+
       - name: Publish static site
         run: dotnet publish src/JwtTool.App -c Release -o publish
 
@@ -36,8 +76,13 @@ jobs:
           path: publish/wwwroot
 
   deploy:
+    name: Deploy to GitHub Pages
     needs: build
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
