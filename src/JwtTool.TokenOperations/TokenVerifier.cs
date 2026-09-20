@@ -4,15 +4,6 @@ using System.Text.Json.Nodes;
 
 namespace JwtTool.TokenOperations;
 
-/// <summary>The signing algorithms this tool supports for Verify and Encode.</summary>
-public enum SignatureAlgorithm
-{
-    HS256,
-    HS384,
-    HS512,
-    RS256,
-}
-
 /// <summary>The outcome of Verify: a plain verdict plus the reason when invalid.</summary>
 public sealed record VerifyResult(bool IsValid, string? Reason)
 {
@@ -50,12 +41,12 @@ public static class TokenVerifier
         var headerAlg = TokenPartReader.ReadJsonObject(parts[0], "Header").Obj?["alg"]?.GetValue<string>();
         if (headerAlg is null)
             return new VerifyResult(false, "The Header could not be read, so the algorithm cannot be cross-checked.");
-        if (headerAlg.Equals("none", StringComparison.OrdinalIgnoreCase))
+        if (SignatureAlgorithms.IsUnsignedHeaderAlg(headerAlg))
             return new VerifyResult(false,
                 "The Token is unsigned (alg: none) — there is no Signature to Verify. Anyone could have forged its contents.");
-        if (!headerAlg.Equals(SignatureAlgorithmName(algorithm), StringComparison.Ordinal))
+        if (!SignatureAlgorithms.HeaderAlgMatches(headerAlg, algorithm))
             return new VerifyResult(false,
-                $"The Token's header says alg {headerAlg}, but you chose {SignatureAlgorithmName(algorithm)}. " +
+                $"The Token's header says alg {headerAlg}, but you chose {SignatureAlgorithms.JwaName(algorithm)}. " +
                 "Verify with the algorithm the Token actually uses.");
 
         if (string.IsNullOrWhiteSpace(keyMaterial))
@@ -88,20 +79,10 @@ public static class TokenVerifier
         }
     }
 
-    private static string SignatureAlgorithmName(SignatureAlgorithm algorithm) =>
-        algorithm.ToString(); // enum member names are exactly the JWA alg strings for this set
-
     private static bool VerifyHmacSignature(SignatureAlgorithm algorithm, string signingInput, byte[] expected, string keyMaterial)
     {
-        var key = Encoding.UTF8.GetBytes(keyMaterial);
         var data = Encoding.UTF8.GetBytes(signingInput);
-        using HMAC hmac = algorithm switch
-        {
-            SignatureAlgorithm.HS256 => new HMACSHA256(key),
-            SignatureAlgorithm.HS384 => new HMACSHA384(key),
-            SignatureAlgorithm.HS512 => new HMACSHA512(key),
-            _ => throw new ArgumentOutOfRangeException(nameof(algorithm)),
-        };
+        using HMAC hmac = SignatureAlgorithms.CreateHmac(algorithm, keyMaterial);
         var computed = hmac.ComputeHash(data);
         return CryptographicOperations.FixedTimeEquals(expected, computed);
     }

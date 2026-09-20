@@ -29,7 +29,7 @@ public static class TokenEncoder
         var header = ParseObject(headerJson, "Header");
         var payload = ParseObject(payloadJson, "Payload");
 
-        var algName = algorithm.ToString();
+        var algName = SignatureAlgorithms.JwaName(algorithm);
         if (header["alg"] is not { } existingAlg)
         {
             var reordered = new JsonObject { ["alg"] = algName };
@@ -87,14 +87,7 @@ public static class TokenEncoder
             }
         }
 
-        var key = Encoding.UTF8.GetBytes(keyMaterial);
-        using HMAC hmac = algorithm switch
-        {
-            SignatureAlgorithm.HS256 => new HMACSHA256(key),
-            SignatureAlgorithm.HS384 => new HMACSHA384(key),
-            SignatureAlgorithm.HS512 => new HMACSHA512(key),
-            _ => throw new ArgumentOutOfRangeException(nameof(algorithm)),
-        };
+        using HMAC hmac = SignatureAlgorithms.CreateHmac(algorithm, keyMaterial);
         return hmac.ComputeHash(data);
     }
 
