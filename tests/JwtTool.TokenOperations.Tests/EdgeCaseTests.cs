@@ -50,6 +50,22 @@ public class EdgeCaseTests
         Assert.True(TokenVerifier.Verify(token, SignatureAlgorithm.HS256, Secret).IsValid);
     }
 
+    [Fact]
+    public void Unicode_payload_round_trips_through_rs256_encode_decode_and_verify()
+    {
+        var payload = """{"sub":"日本語テスト","emoji":"🔐🚀","name":"Ünïcødé"}""";
+
+        using var rsa = RSA.Create(2048);
+        var token = TokenEncoder.Encode(
+            """{"alg":"RS256","typ":"JWT"}""",
+            payload, SignatureAlgorithm.RS256, rsa.ExportPkcs8PrivateKeyPem());
+
+        var decoded = TokenDecoder.Decode(token);
+        Assert.Null(decoded.ParseError);
+        Assert.True(JsonNode.DeepEquals(JsonNode.Parse(payload), JsonNode.Parse(decoded.PayloadJson!)));
+        Assert.True(TokenVerifier.Verify(token, SignatureAlgorithm.RS256, rsa.ExportSubjectPublicKeyInfoPem()).IsValid);
+    }
+
     private static string ToBase64Url(string s) =>
         Convert.ToBase64String(Encoding.UTF8.GetBytes(s)).TrimEnd('=').Replace('+', '-').Replace('/', '_');
 }
