@@ -12,6 +12,13 @@ window.jwtRsa = {
             key = await crypto.subtle.importKey('pkcs8', der, algorithm, false, ['verify']);
         }
         return await crypto.subtle.verify(algorithm, key, signature, new TextEncoder().encode(signingInput));
+    },
+    sign: async (signingInput, pem) => {
+        const der = pemToDer(pem);
+        const algorithm = { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' };
+        const key = await crypto.subtle.importKey('pkcs8', der, algorithm, false, ['sign']);
+        const signature = await crypto.subtle.sign(algorithm, key, new TextEncoder().encode(signingInput));
+        return Array.from(new Uint8Array(signature));
     }
 };
 

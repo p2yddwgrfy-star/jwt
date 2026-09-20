@@ -240,7 +240,7 @@
             return;
         // EncodeTab stays in the tree (hidden) so its state and reference persist
         // across tab switches; load directly and switch.
-        encodeTab.Load(decoded.HeaderJson, decoded.PayloadJson);
+        _ = encodeTab.Load(decoded.HeaderJson, decoded.PayloadJson);
         SwitchTab(Tab.Encode);
     }
 

@@ -77,15 +77,15 @@ else if (encToken is not null)
 
     /// Loads the given header and payload into the editors, as the Decode tab's
     /// "Tweak & re-encode" does. Public so the parent can drive it.
-    public void Load(string headerJson, string payloadJson)
+    public async Task Load(string headerJson, string payloadJson)
     {
         encHeader = headerJson;
         encPayload = payloadJson;
-        Reencode();
+        await Reencode();
         StateHasChanged();
     }
 
-    private void Reencode()
+    private async Task Reencode()
     {
         encToken = null;
         encError = null;
@@ -93,7 +93,10 @@ else if (encToken is not null)
             return;
         try
         {
-            encToken = TokenEncoder.Encode(encHeader, encPayload, encAlgorithm, encKey);
+            encToken = encAlgorithm == SignatureAlgorithm.RS256
+                ? await TokenEncoder.EncodeAsync(encHeader, encPayload, encAlgorithm, encKey,
+                    (signingInput, pem) => new ValueTask<byte[]>(RsaWebCrypto.SignAsync(JS, signingInput, pem)))
+                : TokenEncoder.Encode(encHeader, encPayload, encAlgorithm, encKey);
         }
         catch (ArgumentException ex)
         {

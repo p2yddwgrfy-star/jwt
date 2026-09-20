@@ -9,9 +9,19 @@ namespace JwtTool.TokenOperations;
 /// The header's alg is cross-checked against the chosen algorithm exactly as Verify does;
 /// a missing alg is filled in with the chosen one.
 /// </summary>
+public delegate ValueTask<byte[]> RsaSignatureSigner(string signingInput, string keyMaterial);
+
 public static class TokenEncoder
 {
-    public static string Encode(string headerJson, string payloadJson, SignatureAlgorithm algorithm, string keyMaterial)
+    public static string Encode(string headerJson, string payloadJson, SignatureAlgorithm algorithm, string keyMaterial) =>
+        EncodeAsync(headerJson, payloadJson, algorithm, keyMaterial).AsTask().GetAwaiter().GetResult();
+
+    public static async ValueTask<string> EncodeAsync(
+        string headerJson,
+        string payloadJson,
+        SignatureAlgorithm algorithm,
+        string keyMaterial,
+        RsaSignatureSigner? signRsaSignature = null)
     {
         if (string.IsNullOrWhiteSpace(keyMaterial))
             throw new ArgumentException("A Key is required to Encode: a Secret (HS family) or PEM RSA key (RS256).", nameof(keyMaterial));
@@ -36,7 +46,8 @@ public static class TokenEncoder
 
         var headerPart = Base64Url.Encode(Encoding.UTF8.GetBytes(header.ToJsonString()));
         var payloadPart = Base64Url.Encode(Encoding.UTF8.GetBytes(payload.ToJsonString()));
-        var signature = ComputeSignature(algorithm, keyMaterial, $"{headerPart}.{payloadPart}");
+        var signingInput = $"{headerPart}.{payloadPart}";
+        var signature = await ComputeSignatureAsync(algorithm, keyMaterial, signingInput, signRsaSignature);
         return $"{headerPart}.{payloadPart}.{Base64Url.Encode(signature)}";
     }
 
@@ -54,16 +65,19 @@ public static class TokenEncoder
         }
     }
 
-    private static byte[] ComputeSignature(SignatureAlgorithm algorithm, string keyMaterial, string signingInput)
+    private static async ValueTask<byte[]> ComputeSignatureAsync(
+        SignatureAlgorithm algorithm,
+        string keyMaterial,
+        string signingInput,
+        RsaSignatureSigner? signRsaSignature)
     {
         var data = Encoding.UTF8.GetBytes(signingInput);
         if (algorithm == SignatureAlgorithm.RS256)
         {
             try
             {
-                using var rsa = RSA.Create();
-                rsa.ImportFromPem(keyMaterial);
-                return rsa.SignData(data, System.Security.Cryptography.HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+                var signer = signRsaSignature ?? BclRsaSignatureSigner.SignAsync;
+                return await signer(signingInput, keyMaterial);
             }
             catch (Exception ex) when (ex is CryptographicException or ArgumentException)
             {
@@ -81,5 +95,18 @@ public static class TokenEncoder
             SignatureAlgorithm.HS512 => new HMACSHA512(key).ComputeHash(data),
             _ => throw new ArgumentOutOfRangeException(nameof(algorithm)),
         };
+    }
+
+    private static class BclRsaSignatureSigner
+    {
+        public static ValueTask<byte[]> SignAsync(string signingInput, string keyMaterial)
+        {
+            using var rsa = RSA.Create();
+            rsa.ImportFromPem(keyMaterial);
+            return ValueTask.FromResult(rsa.SignData(
+                Encoding.UTF8.GetBytes(signingInput),
+                System.Security.Cryptography.HashAlgorithmName.SHA256,
+                RSASignaturePadding.Pkcs1));
+        }
     }
 }
