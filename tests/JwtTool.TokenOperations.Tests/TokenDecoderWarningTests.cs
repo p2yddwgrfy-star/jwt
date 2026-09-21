@@ -89,6 +89,35 @@ public class TokenDecoderWarningTests
         Assert.Null(result.PayloadJson);
     }
 
+    [Fact]
+    public void Decode_token_whose_header_has_no_alg_claim_yields_no_algorithm()
+    {
+        // A valid JSON object header with no alg claim: Algorithm stays null, the token
+        // is not flagged unsigned, and the payload still decodes.
+        var token = MakeToken("""{"typ":"JWT"}""", """{"sub":"a"}""");
+
+        var result = TokenDecoder.Decode(token);
+
+        Assert.Null(result.ParseError);
+        Assert.Null(result.Algorithm);
+        Assert.DoesNotContain(result.Warnings, w => w.Contains("unsigned"));
+        Assert.NotNull(result.PayloadJson);
+    }
+
+    [Fact]
+    public void Decode_token_whose_header_is_not_a_json_object_yields_no_algorithm()
+    {
+        // A valid-JSON non-object header: no Algorithm, the reader's warning names it.
+        var token = MakeToken("[1,2]", """{"sub":"a"}""");
+
+        var result = TokenDecoder.Decode(token);
+
+        Assert.Null(result.ParseError);
+        Assert.Null(result.Algorithm);
+        Assert.Contains(result.Warnings, w => w.Contains("Header") && w.Contains("does not contain a JSON object"));
+        Assert.NotNull(result.PayloadJson);
+    }
+
     [Theory]
     [InlineData("only-two-parts")]
     [InlineData("a.b.c.d")]
