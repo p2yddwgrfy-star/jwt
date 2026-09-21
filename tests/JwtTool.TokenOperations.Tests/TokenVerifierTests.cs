@@ -84,6 +84,30 @@ public class TokenVerifierTests
         Assert.Contains("Key", result.Reason);
     }
 
+    [Fact]
+    public void Verify_token_whose_header_has_no_alg_claim_is_invalid()
+    {
+        // A valid JSON object header with no alg: the algorithm cannot be cross-checked.
+        var token = MakeToken("""{"typ":"JWT"}""", """{"sub":"a"}""", "c2ln");
+
+        var result = TokenVerifier.Verify(token, SignatureAlgorithm.HS256, CanonicalSecret);
+
+        Assert.False(result.IsValid);
+        Assert.Contains("could not be read", result.Reason);
+    }
+
+    [Fact]
+    public void Verify_token_whose_header_is_not_a_json_object_is_invalid()
+    {
+        // A valid-JSON non-object header: same refusal, no exception.
+        var token = MakeToken("[1,2]", """{"sub":"a"}""", "c2ln");
+
+        var result = TokenVerifier.Verify(token, SignatureAlgorithm.HS256, CanonicalSecret);
+
+        Assert.False(result.IsValid);
+        Assert.Contains("could not be read", result.Reason);
+    }
+
     /// Signs a payload with a plain HMAC over header.payload, independent of the library under test.
     private static string SignHs(string secret, SignatureAlgorithm algorithm, string payloadJson)
     {
