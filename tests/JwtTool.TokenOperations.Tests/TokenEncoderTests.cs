@@ -29,6 +29,30 @@ public class TokenEncoderTests
         Assert.Null(verified.Reason);
     }
 
+    [Theory]
+    [InlineData(SignatureAlgorithm.HS384)]
+    [InlineData(SignatureAlgorithm.HS512)]
+    public void Encode_hs384_and_hs512_round_trip_through_decode_and_verify(SignatureAlgorithm algorithm)
+    {
+        var header = "{\"alg\":\"" + SignatureAlgorithms.JwaName(algorithm) + "\",\"typ\":\"JWT\"}";
+        var payload = """{"sub":"wider"}""";
+
+        var token = TokenEncoder.Encode(header, payload, algorithm, CanonicalSecret);
+
+        var decoded = TokenDecoder.Decode(token);
+        Assert.Null(decoded.ParseError);
+        Assert.Equal(SignatureAlgorithms.JwaName(algorithm), decoded.Algorithm);
+        Assert.True(TokenVerifier.Verify(token, algorithm, CanonicalSecret).IsValid);
+
+        // A different HS family member must sign differently over the same input.
+        var signingInput = string.Join(".", token.Split('.').Take(2));
+        using var hs256 = new HMACSHA256(Encoding.UTF8.GetBytes(CanonicalSecret));
+        var hs256Signature = Convert.ToBase64String(
+            hs256.ComputeHash(Encoding.UTF8.GetBytes(signingInput))
+        ).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+        Assert.NotEqual(hs256Signature, token.Split('.')[2]);
+    }
+
     [Fact]
     public void Encode_output_signature_part_is_base64url_without_padding()
     {
