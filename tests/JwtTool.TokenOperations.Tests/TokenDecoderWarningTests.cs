@@ -46,6 +46,49 @@ public class TokenDecoderWarningTests
         Assert.Null(result.PayloadJson);
     }
 
+    [Fact]
+    public void Decode_token_with_a_valid_json_array_payload_warns_but_keeps_signature()
+    {
+        // Valid JSON that is not an object: "WzEsMl0" is the base64url of "[1,2]".
+        var token = $"{ToBase64Url("""{"alg":"HS256","typ":"JWT"}""")}.WzEsMl0.{Signature}";
+
+        var result = TokenDecoder.Decode(token);
+
+        Assert.Null(result.ParseError);
+        Assert.Contains(result.Warnings, w => w.Contains("Payload") && w.Contains("does not contain a JSON object"));
+        Assert.Equal(Signature, result.SignatureBase64Url);
+        Assert.Null(result.PayloadJson);
+    }
+
+    [Theory]
+    [InlineData("42")]
+    [InlineData("\"str\"")]
+    [InlineData("null")]
+    [InlineData("[]")]
+    public void Decode_payloads_of_valid_json_that_is_not_an_object_warn(string json)
+    {
+        var token = MakeToken("""{"alg":"HS256"}""", json);
+
+        var result = TokenDecoder.Decode(token);
+
+        Assert.Null(result.ParseError);
+        Assert.Contains(result.Warnings, w => w.Contains("Payload") && w.Contains("does not contain a JSON object"));
+        Assert.Null(result.PayloadJson);
+    }
+
+    [Fact]
+    public void Decode_token_with_empty_header_and_payload_parts_warns_each()
+    {
+        // An empty header or payload part reaches the reader, which names it in the warning.
+        var result = TokenDecoder.Decode("..");
+
+        Assert.Null(result.ParseError);
+        Assert.Contains(result.Warnings, w => w.Contains("Header") && w.Contains("is empty"));
+        Assert.Contains(result.Warnings, w => w.Contains("Payload") && w.Contains("is empty"));
+        Assert.Null(result.HeaderJson);
+        Assert.Null(result.PayloadJson);
+    }
+
     [Theory]
     [InlineData("only-two-parts")]
     [InlineData("a.b.c.d")]
