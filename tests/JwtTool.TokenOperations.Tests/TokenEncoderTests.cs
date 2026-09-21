@@ -40,6 +40,17 @@ public class TokenEncoderTests
         Assert.DoesNotContain("/", signaturePart);
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Encode_rejects_a_missing_key(string key)
+    {
+        var result = Assert.Throws<ArgumentException>(
+            () => TokenEncoder.Encode("""{"alg":"HS256"}""", """{"sub":"a"}""", SignatureAlgorithm.HS256, key));
+
+        Assert.Contains("Key is required to Encode", result.Message);
+    }
+
     [Fact]
     public void Encode_rejects_header_that_is_not_valid_json()
     {
