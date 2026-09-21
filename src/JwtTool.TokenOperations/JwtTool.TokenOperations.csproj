@@ -6,4 +6,10 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <!-- The internal Base64Url codec is unit-tested directly (#45): a pure function whose
+         empty-input branch is unreachable through the public API. -->
+    <InternalsVisibleTo Include="JwtTool.TokenOperations.Tests" />
+  </ItemGroup>
+
 </Project>
