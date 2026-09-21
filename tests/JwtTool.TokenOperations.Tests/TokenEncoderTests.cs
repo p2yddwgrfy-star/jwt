@@ -93,6 +93,17 @@ public class TokenEncoderTests
         Assert.Contains("Payload", result.Message);
     }
 
+    [Theory]
+    [InlineData("[]", """{"sub":"a"}""", "Header")]
+    [InlineData("""{"alg":"HS256"}""", "\"just a string\"", "Payload")]
+    public void Encode_rejects_valid_json_that_is_not_an_object(string header, string payload, string part)
+    {
+        var result = Assert.Throws<ArgumentException>(
+            () => TokenEncoder.Encode(header, payload, SignatureAlgorithm.HS256, "secret"));
+
+        Assert.Contains($"{part} does not contain a JSON object", result.Message);
+    }
+
     [Fact]
     public void Encode_rejects_header_without_alg_mismatching_chosen_algorithm()
     {
